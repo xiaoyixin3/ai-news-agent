@@ -56,7 +56,7 @@ class ApiIntegrationTest {
         assertEquals(404,request("GET","/api/briefs/"+bid,other,null).statusCode());
         assertEquals(404,request("POST","/api/briefs/"+bid+"/retry-delivery",other,null).statusCode());
         assertEquals(400,request("GET","/api/briefs?page=0",token,null).statusCode());
-        assertEquals(5,Json.parse(request("GET","/api/runs/"+rid+"/events",token,null).body()).findValuesAsText("name").size());
+        assertEquals(10,Json.parse(request("GET","/api/runs/"+rid+"/events",token,null).body()).findValuesAsText("name").size());
         assertEquals(200,request("PUT","/api/me",token,Json.object("nickname","已修改","enabled",false)).statusCode());
         assertEquals("已修改",Json.parse(request("GET","/api/me",token,null).body()).path("profile").path("nickname").asText());
     }

@@ -22,15 +22,18 @@
           <label class="checkbox"><input name="enabled" type="checkbox" checked><span>开启每日自动简报<small>按设定时间生成；需要服务持续运行。</small></span></label>
           <button type="submit" id="save" class="primary full">保存偏好</button>
         </form>
+        <button id="delete-subscription" type="button" class="quiet" hidden>删除订阅与历史数据</button>
       </section>
       <div class="results">
         <section class="panel inbox" aria-labelledby="inbox-title">
-          <div class="section-head"><h2 id="inbox-title">简报收件箱</h2><button id="generate" type="button" class="primary">生成简报</button></div>
+          <div class="section-head"><h2 id="inbox-title">简报收件箱</h2><div class="action-row"><button id="cancel-run" type="button" class="quiet" hidden>取消生成</button><button id="generate" type="button" class="primary">生成简报</button></div></div>
+          <label class="mode-filter">查看历史<select id="history-mode"><option value="demo">演示简报</option><option value="live">真实简报</option></select></label>
           <p id="generation-status" class="subtle" role="status" aria-live="polite" hidden></p>
           <div id="history-controls" class="history-controls" hidden><label for="history-select">历史简报</label><select id="history-select"></select><button id="previous" type="button" class="quiet">上一页</button><button id="next" type="button" class="quiet">下一页</button></div>
           <div id="brief-content" class="brief-content"><div class="empty"><h3>你的第一份简报，从这里开始</h3><p>保存偏好后，点击生成简报。</p></div></div>
         </section>
         <section class="panel runs" aria-labelledby="runs-title"><h2 id="runs-title">运行记录</h2><p class="subtle">生成后可查看工具调用过程。</p><div id="runs-content"><div class="empty run-empty"><p>暂无运行记录<br><span>生成简报后，这里将显示工具调用的详细过程。</span></p></div></div></section>
+        <section class="panel"><details><summary>运行统计</summary><div id="metrics-content" class="subtle">保存订阅后显示，演示与真实模式分别统计。</div></details></section>
       </div>
     </div>
   </main>

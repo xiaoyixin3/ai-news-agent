@@ -49,7 +49,8 @@ public final class Profile {
         return value;
     }
     public static String dueDate(JsonNode profile, Instant now) {
-        ZonedDateTime local = now.atZone(ZoneId.of(profile.path("timezone").asText()));
-        return profile.path("enabled").asBoolean() && !local.toLocalTime().isBefore(LocalTime.parse(profile.path("time").asText())) ? local.toLocalDate().toString() : null;
+        ZoneId zone=ZoneId.of(profile.path("timezone").asText());ZonedDateTime local=now.atZone(zone);
+        ZonedDateTime target=local.toLocalDate().atTime(LocalTime.parse(profile.path("time").asText())).atZone(zone).withEarlierOffsetAtOverlap();
+        return profile.path("enabled").asBoolean()&&!now.isBefore(target.toInstant())?local.toLocalDate().toString():null;
     }
 }

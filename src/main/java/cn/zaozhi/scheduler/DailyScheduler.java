@@ -12,8 +12,10 @@ public class DailyScheduler {
     private final Settings settings;
     private final Database db;
     private final TaskService tasks;
-    public DailyScheduler(Settings settings,Database db,TaskService tasks) { this.settings=settings; this.db=db; this.tasks=tasks; }
-    @Scheduled(fixedDelay=20000,initialDelay=20000) public void scan() { scan(Instant.now()); }
+    private final java.time.Clock clock;
+    public DailyScheduler(Settings settings,Database db,TaskService tasks){this(settings,db,tasks,java.time.Clock.systemUTC());}
+    @org.springframework.beans.factory.annotation.Autowired public DailyScheduler(Settings settings,Database db,TaskService tasks,java.time.Clock clock) { this.settings=settings; this.db=db; this.tasks=tasks;this.clock=clock; }
+    @Scheduled(fixedDelay=20000,initialDelay=20000) public void scan() { scan(clock.instant()); }
     public void scan(Instant now) {
         if(!settings.scheduler||!settings.ready()) return;
         for(var user:db.all("SELECT id,profile FROM subscriptions")) {
