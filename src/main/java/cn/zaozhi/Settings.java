@@ -20,11 +20,13 @@ public final class Settings {
         maxRounds = integer("MAX_ROUNDS", 16); maxCalls = integer("MAX_TOOL_CALLS", 40);
         runTimeout = integer("RUN_TIMEOUT", 300); llmTimeout = integer("LLM_TIMEOUT", 60);
         if(port<1||port>65535||maxRounds<1||maxRounds>100||maxCalls<1||maxCalls>200||runTimeout<1||runTimeout>1800||llmTimeout<1||llmTimeout>300) throw new IllegalArgumentException("环境配置超出允许范围");
+        limit("CONTEXT_TOKEN_LIMIT",24000,64,128000);limit("RUN_TOKEN_LIMIT",100000,1000,1000000);limit("NETWORK_BYTE_LIMIT",20*1024*1024,1,100*1024*1024);limit("WORKSPACE_BYTE_LIMIT",10*1024*1024,64,50*1024*1024);limit("DELIVERY_RETRY_COOLDOWN",30,0,600);
         java.net.URI base=java.net.URI.create(baseUrl);
         if(!List.of("https","http").contains(base.getScheme())||base.getHost()==null||base.getUserInfo()!=null||base.getQuery()!=null||base.getFragment()!=null) throw new IllegalArgumentException("LLM_BASE_URL 必须是有效 HTTP(S) 地址");
     }
     public String get(String name, String fallback) { return values.getOrDefault(name, fallback); }
     public int integer(String name, int fallback) { return Integer.parseInt(get(name, "" + fallback)); }
+    private void limit(String name,int fallback,int min,int max){int n=integer(name,fallback);if(n<min||n>max)throw new IllegalArgumentException(name+" 超出允许范围");}
     private boolean bool(String name,boolean fallback) {
         String value=get(name,String.valueOf(fallback));
         if(!value.equals("true")&&!value.equals("false")) throw new IllegalArgumentException(name+" 必须为 true 或 false");
@@ -35,7 +37,7 @@ public final class Settings {
     public com.fasterxml.jackson.databind.node.ObjectNode snapshot() {
         return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1","tool_schema_version","1.1",
             "max_rounds",maxRounds,"max_calls",maxCalls,"run_timeout",runTimeout,"llm_timeout",llmTimeout,
-            "context_tokens",24000,"run_tokens",100000,"network_bytes",20*1024*1024,"workspace_bytes",10*1024*1024);
+            "context_tokens",integer("CONTEXT_TOKEN_LIMIT",24000),"run_tokens",integer("RUN_TOKEN_LIMIT",100000),"network_bytes",integer("NETWORK_BYTE_LIMIT",20*1024*1024),"workspace_bytes",integer("WORKSPACE_BYTE_LIMIT",10*1024*1024));
     }
     public String redact(String value) {
         if(value==null) return "执行失败，请检查配置或稍后重试";

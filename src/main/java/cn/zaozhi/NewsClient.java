@@ -16,7 +16,6 @@ import java.util.concurrent.Flow;
 
 public class NewsClient {
     private static final Set<String> TRUSTED=Set.of("news.google.com","huggingface.co","arstechnica.com","openai.com","deepseek.com","anthropic.com","blog.google","research.google","microsoft.com","github.blog","techcrunch.com","technologyreview.com","venturebeat.com","reuters.com");
-    private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NEVER).build();
     public static final ArrayNode SOURCES=Json.arr().add(Json.object("name","Hugging Face Blog","url","https://huggingface.co/blog/feed.xml"))
         .add(Json.object("name","Ars Technica","url","https://feeds.arstechnica.com/arstechnica/technology-lab"))
         .add(Json.object("name","Google News","url","使用 search_news 按话题搜索"));
@@ -30,35 +29,24 @@ public class NewsClient {
     }
     public static void validateTarget(String url) throws Exception {
         URI uri=URI.create(canonical(url)); String host=uri.getHost().toLowerCase(Locale.ROOT);
-        if (TRUSTED.stream().noneMatch(d->host.equals(d)||host.endsWith("."+d))) throw new IllegalArgumentException("该域名不在新闻来源白名单；请换用官方 RSS 或 Google News 搜索");
+        validateDomain(host);
         for (InetAddress ip:InetAddress.getAllByName(host)) if (!publicAddress(ip)) throw new IllegalArgumentException("禁止访问私网、回环和保留地址");
     }
-    static boolean publicAddress(InetAddress ip) {
+    public static void validateDomain(String host){String lower=host.toLowerCase(Locale.ROOT);if(TRUSTED.stream().noneMatch(d->lower.equals(d)||lower.endsWith("."+d)))throw new IllegalArgumentException("该域名不在新闻来源白名单");}
+    public static boolean publicAddress(InetAddress ip) {
         if (ip.isAnyLocalAddress()||ip.isLoopbackAddress()||ip.isLinkLocalAddress()||ip.isSiteLocalAddress()||ip.isMulticastAddress()) return false;
         byte[] b=ip.getAddress(); int a=Byte.toUnsignedInt(b[0]);
-        if (b.length==16) return (a&0xfe)!=0xfc && a!=0;
+        if (b.length==16) return (a&0xe0)==0x20 && !(a==0x20&&Byte.toUnsignedInt(b[1])==1&&Byte.toUnsignedInt(b[2])<2) && !(a==0x20&&Byte.toUnsignedInt(b[1])==1&&Byte.toUnsignedInt(b[2])==0x0d&&Byte.toUnsignedInt(b[3])==0xb8) && !(a==0x20&&Byte.toUnsignedInt(b[1])==2);
         int second=Byte.toUnsignedInt(b[1]);
-        return a!=0 && a!=127 && a<224 && !(a==100 && second>=64 && second<=127) && !(a==198&&(second==18||second==19)) && !(a==192&&second==0);
+        int third=Byte.toUnsignedInt(b[2]);return a!=0&&a!=127&&a<224&&!(a==100&&second>=64&&second<=127)&&!(a==198&&(second==18||second==19))&&!(a==192&&second==0)&&!(a==192&&second==0&&third==2)&&!(a==198&&second==51&&third==100)&&!(a==203&&second==0&&third==113);
     }
     public byte[] fetch(String url) throws Exception { return fetch(url,System.nanoTime()+TimeUnit.SECONDS.toNanos(20)); }
     public byte[] fetch(String url,long deadline) throws Exception {
-        deadline=Math.min(deadline,System.nanoTime()+TimeUnit.SECONDS.toNanos(20));
-        for(int redirects=0;redirects<5;redirects++) {
-            url=canonical(url); validateTarget(url);
-            long remaining=TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime());
-            if(remaining<=0) throw new IOException("新闻来源访问超过时间上限");
-            HttpRequest req=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMillis(remaining)).header("User-Agent","DailyAINewsAgent/1.0").GET().build();
-            CompletableFuture<HttpResponse<byte[]>> future=http.sendAsync(req, info->new cn.zaozhi.news.BoundedBody(2_000_000));
-            HttpResponse<byte[]> res;
-            try { res=future.get(remaining,TimeUnit.MILLISECONDS); } catch(Exception e) { future.cancel(true); if(e instanceof InterruptedException) Thread.currentThread().interrupt(); throw new IOException("新闻来源超时或不可达",e); }
-            if (Set.of(301,302,303,307,308).contains(res.statusCode())) { url=URI.create(url).resolve(res.headers().firstValue("location").orElseThrow()).toString(); continue; }
-            if (res.statusCode()!=200) throw new IOException("新闻来源返回 HTTP "+res.statusCode());
-            return res.body();
-        }
-        throw new IOException("来源重定向次数过多");
+        return new cn.zaozhi.news.SafeHttpFetcher().fetch(url,deadline,null);
     }
     public ArrayNode feed(String url,int hours) throws Exception { return parseFeed(fetch(url),url,hours,Instant.now()); }
     public ArrayNode feed(String url,int hours,long deadline) throws Exception { return parseFeed(fetch(url,deadline),url,hours,Instant.now()); }
+    public ArrayNode feed(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{return parseFeed(new cn.zaozhi.news.SafeHttpFetcher().fetch(url,ctx.deadline,ctx.budget),url,ctx.profile.path("lookback_hours").asInt(),ctx.windowEnd);}
     public static ArrayNode parseFeed(byte[] data,String url,int hours,Instant now) throws Exception {
         SyndFeedInput input=new SyndFeedInput(); input.setAllowDoctypes(false);
         SyndFeed feed=input.build(new XmlReader(new ByteArrayInputStream(data)));
@@ -69,7 +57,7 @@ public class NewsClient {
             Date date=entry.getPublishedDate()!=null?entry.getPublishedDate():entry.getUpdatedDate();
             if(date==null) continue;
             long age=Duration.between(date.toInstant(),now).getSeconds();
-            if(age < -300 || age > hours*3600L) continue;
+            if(date.toInstant().isAfter(now)||age > hours*3600L) continue;
             String link;
             try { link=canonical(URI.create(url).resolve(entry.getLink()).toString()); } catch(Exception e) { continue; }
             if(entry.getTitle()==null || entry.getTitle().isBlank() || !used.add(link)) continue;
@@ -89,6 +77,7 @@ public class NewsClient {
         var main=doc.selectFirst("article,main");
         return clip(main==null?doc.text():main.text(),12000);
     }
+    public String article(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{var doc=Jsoup.parse(new String(new cn.zaozhi.news.SafeHttpFetcher().fetch(url,ctx.deadline,ctx.budget),StandardCharsets.UTF_8));doc.select("script,style,nav,header,footer").remove();var main=doc.selectFirst("article,main");return clip(main==null?doc.text():main.text(),100000);}
     public static String clip(String s,int max) { if(s==null)return "";return s.length()>max?s.substring(0,max):s; }
     public static ArrayNode demoNews() {
         ArrayNode a=Json.arr(); String now=Instant.now().toString();

@@ -18,10 +18,10 @@ public final class MigrationRunner {
             try(ResultSet rs=s.executeQuery("PRAGMA table_info(schema_migrations)")) {while(rs.next()) if(rs.getString("name").equals("checksum"))checksum=true;}
             if(!checksum)s.execute("ALTER TABLE schema_migrations ADD COLUMN checksum TEXT");
         }
-        for(int version=1;version<=2;version++) {
-            String name=version==1?"001_initial.sql":"002_runtime.sql";
+        for(int version=1;version<=3;version++) {
+            String name=switch(version){case 1->"001_initial.sql";case 2->"002_runtime.sql";default->"003_quotas.sql";};
             String sql;
-            try(var in=MigrationRunner.class.getResourceAsStream("/migrations/"+name)) {sql=new String(Objects.requireNonNull(in).readAllBytes(),StandardCharsets.UTF_8);}
+            try(var in=MigrationRunner.class.getResourceAsStream("/migrations/"+name)) {sql=new String(Objects.requireNonNull(in).readAllBytes(),StandardCharsets.UTF_8).replace("\r\n","\n");}
             String hash=Database.hash(sql);
             try(PreparedStatement check=c.prepareStatement("SELECT checksum FROM schema_migrations WHERE version=?")) {
                 check.setInt(1,version);
@@ -46,6 +46,7 @@ public final class MigrationRunner {
                 executeScript(c,sql);
                 if(version==2) copyOld(c);
                 try(PreparedStatement stamp=c.prepareStatement("INSERT INTO schema_migrations(version,applied_at,checksum) VALUES (?,?,?)")) {stamp.setInt(1,version);stamp.setString(2,Database.now());stamp.setString(3,hash);stamp.executeUpdate();}
+                try(Statement s=c.createStatement()){s.execute("PRAGMA user_version="+version);}
                 try(Statement s=c.createStatement();ResultSet bad=s.executeQuery("PRAGMA foreign_key_check")) {if(bad.next())throw new IllegalStateException("迁移存在孤儿或错误归属，请检查备份与异常记录");}
                 try(Statement s=c.createStatement()) {s.execute("COMMIT");}
             } catch(Exception e) {try(Statement s=c.createStatement()){s.execute("ROLLBACK");}throw new IllegalStateException("迁移 "+name+" 失败，原库已回滚；请检查备份和原因",e);}
@@ -53,6 +54,7 @@ public final class MigrationRunner {
         }
     }
     private static void executeScript(Connection c,String sql)throws Exception {
+        if(sql.contains("-- @statement")){try(Statement s=c.createStatement()){for(String part:sql.split("-- @statement"))if(!part.isBlank())s.execute(part);}return;}
         String clean=sql.replaceAll("(?m)^--.*$","");
         try(Statement s=c.createStatement()) {for(String part:clean.split(";")) if(!part.isBlank()&&!part.strip().startsWith("PRAGMA"))s.execute(part);}
     }

@@ -8,6 +8,7 @@ public final class SchemaValidator {
         String type=schema.path("type").asText();
         boolean valid=switch(type) { case "object"->value.isObject(); case "array"->value.isArray(); case "string"->value.isTextual(); case "integer"->value.isIntegralNumber(); case "boolean"->value.isBoolean(); default->false; };
         if(!valid) throw new IllegalArgumentException("参数类型应为 "+type);
+        if(value.isIntegralNumber()&&(!value.canConvertToInt()||value.asLong()<schema.path("minimum").asLong(Integer.MIN_VALUE)||value.asLong()>schema.path("maximum").asLong(Integer.MAX_VALUE)))throw new IllegalArgumentException("整数超出允许范围");
         if(schema.has("enum")) {
             boolean found=false; for(JsonNode option:schema.get("enum")) if(option.equals(value)) found=true;
             if(!found) throw new IllegalArgumentException("参数值不在允许范围内");

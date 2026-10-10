@@ -54,17 +54,17 @@ class AgentTest {
         assertTrue(registry.execute("bash",Json.object("command","pwd"),c).path("ok").asBoolean());
         assertTrue(registry.execute("bash",Json.object("command","ls"),c).path("ok").asBoolean());
         assertTrue(registry.execute("list_dir",Json.object("path","."),c).path("data").isArray());
-        assertTrue(registry.execute("write_file",Json.object("path","note.txt","content","AI tools"),c).path("ok").asBoolean());
+        assertTrue(registry.execute("write_file",Json.object("path","notes/note.txt","content","AI tools"),c).path("ok").asBoolean());
         assertEquals(1,registry.execute("search_content",Json.object("keyword","tools","dir","."),c).path("data").size());
         assertTrue(registry.execute("fetch_rss",Json.object("url","https://huggingface.co/blog/feed.xml"),c).path("ok").asBoolean());
         assertTrue(registry.execute("fetch_article",Json.object("source_id","demo-agent"),c).path("ok").asBoolean());
     }
     @Test void multipleCallsInOneResponseKeepDependenciesInModelOrder() throws Exception {
-        var c=context(Map.of()); int[] step={0};
+        var c=context(Map.of()); c.remember(Json.arr()); int[] step={0};
         LlmClient client=(messages,tools,deadline)->{
             if(step[0]++==0) {
-                var a=DemoClient.call("write_file",Json.object("path","dependency.txt","content","ready"));
-                ((com.fasterxml.jackson.databind.node.ArrayNode)a.get("tool_calls")).add(DemoClient.call("read_file",Json.object("path","dependency.txt")).get("tool_calls").get(0));
+                var a=DemoClient.call("write_file",Json.object("path","drafts/dependency.txt","content","ready"));
+                ((com.fasterxml.jackson.databind.node.ArrayNode)a.get("tool_calls")).add(DemoClient.call("read_file",Json.object("path","drafts/dependency.txt")).get("tool_calls").get(0));
                 return a;
             }
             if(step[0]==2) {
@@ -82,13 +82,14 @@ class AgentTest {
         var calls=context(Map.of("MAX_TOOL_CALLS","1"));
         assertThrows(IllegalStateException.class,()->new AgentRunner((m,t,d)->DemoClient.call("get_history",Json.obj()),new ToolRegistry(new NewsClient())).run(calls));
     }
-    @Test void malformedArgumentsAndInvalidPublicationCannotReuseOldCandidate() throws Exception {
+    @Test void malformedArgumentsAndInvalidPublicationPreserveAcceptedCandidate() throws Exception {
         assertThrows(IllegalArgumentException.class,()->Json.parse("{} trailing"));
         assertThrows(IllegalArgumentException.class,()->Json.parse("{\"a\":1,\"a\":2}"));
         var c=context(Map.of()); var registry=new ToolRegistry(new NewsClient());
+        c.remember(Json.arr());
         assertTrue(registry.execute("publish_brief",Json.object("title","测试","intro","空简报","items",List.of()),c).path("ok").asBoolean());
         assertFalse(registry.execute("publish_brief",Json.object("title","缺少参数"),c).path("ok").asBoolean());
-        assertNull(c.candidate);
+        assertNotNull(c.candidate);
         assertFalse(registry.execute("unknown_tool",Json.obj(),c).path("ok").asBoolean());
     }
 }

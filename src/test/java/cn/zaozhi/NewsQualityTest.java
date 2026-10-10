@@ -24,12 +24,12 @@ class NewsQualityTest {
     @Test void refusesUnknownExpiredUndatedExcludedAndDuplicateSources() throws Exception {
         var c=context(); var validator=new BriefValidator();
         assertThrows(IllegalArgumentException.class,()->validator.validate(brief("unknown"),c));
-        var source=NewsClient.demoNews().get(0).deepCopy(); c.sources.put("demo-agent",source);
+        var source=NewsClient.demoNews().get(0).deepCopy(); ((com.fasterxml.jackson.databind.node.ObjectNode)source).put("published_at",c.windowEnd.toString()); c.remember(Json.arr().add(source)); source=c.sources.get("demo-agent");
         ((com.fasterxml.jackson.databind.node.ObjectNode)source).put("published_at","2020-01-01T00:00:00Z");
         assertThrows(IllegalArgumentException.class,()->validator.validate(brief("demo-agent"),c));
         ((com.fasterxml.jackson.databind.node.ObjectNode)source).remove("published_at");
         assertThrows(IllegalArgumentException.class,()->validator.validate(brief("demo-agent"),c));
-        ((com.fasterxml.jackson.databind.node.ObjectNode)source).put("published_at",Instant.now().toString()).put("excerpt","包含广告");
+        ((com.fasterxml.jackson.databind.node.ObjectNode)source).put("published_at",c.windowEnd.toString()).put("excerpt","包含广告");
         assertThrows(IllegalArgumentException.class,()->validator.validate(brief("demo-agent"),c));
         ((com.fasterxml.jackson.databind.node.ObjectNode)source).put("excerpt","合成样例");
         var duplicate=brief("demo-agent"); ((com.fasterxml.jackson.databind.node.ArrayNode)duplicate.get("items")).add(duplicate.get("items").get(0).deepCopy());

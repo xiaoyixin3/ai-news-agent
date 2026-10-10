@@ -11,21 +11,23 @@ public final class DemoClient implements LlmClient {
     private int step;
     public DemoClient(JsonNode profile) { this.profile=profile; }
     public ObjectNode next(ArrayNode messages,ArrayNode tools,long deadline) {
-        return switch(step++) {
+        ObjectNode response=switch(step++) {
             case 0 -> call("read_file",Json.object("path","preferences.json"));
             case 1 -> call("get_history",Json.obj());
             case 2 -> call("search_news",Json.object("query",profile.path("topics").toString()));
-            case 3 -> call("write_file",Json.object("path","notes.md","content","离线演示：使用合成样例展示工具调用、筛选和发布，不代表 DeepSeek 实际调用。"));
+            case 3 -> call("write_file",Json.object("path","notes/demo.md","content","离线演示：使用合成样例展示工具调用、筛选和发布，不代表 DeepSeek 实际调用。"));
             case 4 -> call("publish_brief",brief(messages));
             default -> Json.object("role","assistant","content","演示简报已提交。此流程是模拟响应，不证明模型自主决策。");
         };
+        response.set("_usage",Json.object("prompt_tokens",0,"completion_tokens",0));return response;
     }
     private ObjectNode brief(ArrayNode messages) {
         Set<String> used=new HashSet<>();
         for(JsonNode message:messages) if(message.path("role").asText().equals("tool")) {
             JsonNode response=Json.parse(message.path("content").asText());
             JsonNode data=response.path("data");
-            if(data.isArray()) for(JsonNode row:data) for(JsonNode item:row.path("items")) used.add(item.path("url").asText());
+            JsonNode rows=data.isArray()?data:data.path("preview");
+            for(JsonNode row:rows) for(JsonNode item:row.path("items")) used.add(item.path("url").asText());
         }
         ArrayNode items=Json.arr();
         for(JsonNode source:NewsClient.demoNews()) {
