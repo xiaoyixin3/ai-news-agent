@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 
 public final class Json {
-    public static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper()
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+        .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
     private Json() {}
     public static JsonNode parse(String s) {
         try { return MAPPER.readTree(s); } catch (Exception e) { throw new IllegalArgumentException("JSON 格式无效"); }

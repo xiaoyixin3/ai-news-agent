@@ -59,4 +59,36 @@ class AgentTest {
         assertTrue(registry.execute("fetch_rss",Json.object("url","https://huggingface.co/blog/feed.xml"),c).path("ok").asBoolean());
         assertTrue(registry.execute("fetch_article",Json.object("source_id","demo-agent"),c).path("ok").asBoolean());
     }
+    @Test void multipleCallsInOneResponseKeepDependenciesInModelOrder() throws Exception {
+        var c=context(Map.of()); int[] step={0};
+        LlmClient client=(messages,tools,deadline)->{
+            if(step[0]++==0) {
+                var a=DemoClient.call("write_file",Json.object("path","dependency.txt","content","ready"));
+                ((com.fasterxml.jackson.databind.node.ArrayNode)a.get("tool_calls")).add(DemoClient.call("read_file",Json.object("path","dependency.txt")).get("tool_calls").get(0));
+                return a;
+            }
+            if(step[0]==2) {
+                assertEquals("ready",Json.parse(messages.get(messages.size()-1).path("content").asText()).path("data").asText());
+                return DemoClient.call("publish_brief",Json.object("title","无新闻","intro","协议测试","items",List.of()));
+            }
+            return Json.object("role","assistant","content","done");
+        };
+        assertEquals(0,new AgentRunner(client,new ToolRegistry(new NewsClient())).run(c).path("items").size());
+    }
+    @Test void publishedButUnfinishedAndCallLimitFailTheWholeRun() throws Exception {
+        var c=context(Map.of("MAX_ROUNDS","2"));
+        assertThrows(IllegalStateException.class,()->new AgentRunner((m,t,d)->DemoClient.call("publish_brief",Json.object("title","测试","intro","无法结束","items",List.of())),new ToolRegistry(new NewsClient())).run(c));
+        assertTrue(c.db.history(c.userId,30).isEmpty());
+        var calls=context(Map.of("MAX_TOOL_CALLS","1"));
+        assertThrows(IllegalStateException.class,()->new AgentRunner((m,t,d)->DemoClient.call("get_history",Json.obj()),new ToolRegistry(new NewsClient())).run(calls));
+    }
+    @Test void malformedArgumentsAndInvalidPublicationCannotReuseOldCandidate() throws Exception {
+        assertThrows(IllegalArgumentException.class,()->Json.parse("{} trailing"));
+        assertThrows(IllegalArgumentException.class,()->Json.parse("{\"a\":1,\"a\":2}"));
+        var c=context(Map.of()); var registry=new ToolRegistry(new NewsClient());
+        assertTrue(registry.execute("publish_brief",Json.object("title","测试","intro","空简报","items",List.of()),c).path("ok").asBoolean());
+        assertFalse(registry.execute("publish_brief",Json.object("title","缺少参数"),c).path("ok").asBoolean());
+        assertNull(c.candidate);
+        assertFalse(registry.execute("unknown_tool",Json.obj(),c).path("ok").asBoolean());
+    }
 }

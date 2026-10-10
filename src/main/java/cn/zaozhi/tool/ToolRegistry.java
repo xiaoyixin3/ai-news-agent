@@ -51,6 +51,7 @@ public final class ToolRegistry {
         try {
             AgentTool tool=tools.get(name);
             if(tool==null) throw new IllegalArgumentException("未知工具："+name);
+            if(name.equals("publish_brief")) ctx.candidate=null;
             SchemaValidator.validate(args,tool.schema().path("function").path("parameters"));
             JsonNode result=tool.execute(args,ctx); ctx.checkTime();
             if(Json.stringify(result).length()>160_000) throw new IllegalArgumentException("工具结果超出大小上限，请缩小查询");
