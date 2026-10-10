@@ -6,11 +6,11 @@
 
 | 要求 | 实现 | 验证状态 |
 |---|---|---|
-| Java 可运行项目 | Java 17、Spring Boot 3.5.16、Maven Wrapper、可运行 JAR | package 通过，Windows start.cmd 实际启动通过 |
+| Java 可运行项目 | Java 17、Spring Boot 3.5.16、Maven Wrapper、可运行 JAR | package 通过，Windows start.cmd 实际启动通过；交付包解压后 JAR 启动、健康检查和页面 200 通过 |
 | 至少 5 个工具 | 5 个基础工具 + 5 个新闻工具 | 10 个 schema，基础/新闻工具分别执行测试通过 |
 | 模型自主决定顺序 | DeepSeekClient + AgentRunner Function Calling 循环 | 模型接口契约、两种顺序、多工具依赖顺序、错误恢复通过；真实服务待联调 |
 | 订阅偏好 | 身份、话题、关键词、排除词、时间、时区、渠道、数量、回看窗口 | API 与浏览器保存、修改、刷新通过 |
-| 新闻来源与质量 | RSS、Google News 搜索、白名单正文、source_id 校验、真实日期和去重 | RSS fixture、来源/过期/排除/重复/空简报测试通过；外部 RSS 可用性需运行环境验证 |
+| 新闻来源与质量 | RSS、Google News 搜索、白名单正文、source_id 校验、真实日期和去重 | RSS fixture 和质量约束通过；真实 Ars Technica RSS 成功解析近 168 小时 5 条，Hugging Face 本次超时；Google News/正文待目标网络验证 |
 | 每日自动生成 | 20 秒扫描、按时区领取、数据库每日唯一键 | 到时、未到时、重复扫描、手动与定时分离通过 |
 | 异步与资源限制 | 并行 2、排队 32、同用户一活动任务、轮数/次数/总超时 | 容量、409/429、超时与超限测试通过 |
 | 推送 | 站内收件箱、SMTP STARTTLS/SSL、失败保留与重试 | 邮件网关模拟失败/重试与并发领取通过；实际 SMTP 待联调 |
@@ -19,7 +19,7 @@
 | 数据库和迁移 | migrations/001_initial.sql、schema_migrations、事务保存 | 持久化、迁移版本、失败回滚、重启恢复通过 |
 | Git | 按实际阶段提交 | 使用 git log 检查，交付包包含 .git |
 | README 与依赖 | README、pom.xml、启动脚本、.env.example | 无 Node/数据库额外安装；Java 前置条件明确 |
-| 演示 | docs/demo.md，离线演示录屏 | 演示内容明确为合成数据；不能证明真实模型自主性 |
+| 演示 | docs/demo.md，28.8 秒离线演示录屏 | WebM、1440 × 1150、25 fps，媒体完整解析通过；内容为合成数据，不能证明真实模型自主性 |
 
 ## 自动化测试
 
@@ -57,6 +57,6 @@
 
 1. 当前环境未配置有效 DEEPSEEK_API_KEY，未对真实 DeepSeek 发起生成，不声称已完成真实模型自主决策验收。
 2. 当前未配置 SMTP 凭据，未发送真实邮件；SMTP 适配器和状态/重试逻辑通过模拟测试。
-3. 实时新闻源受网络、源更新频率和正文访问限制影响，默认离线演示没有进行真实新闻检索。
+3. 额外的真实 RSS 冒烟检查中，Ars Technica 在本机成功解析，Hugging Face 超时；尚未验证 Google News 和实际文章正文。默认离线演示仍不进行真实新闻检索。
 
 真实验收步骤：在本地设 DEMO_MODE=false 并配置密钥；保存偏好后生成至少两次，检查自主轨迹、来源日期和摘要；再配置 SMTP、选择邮件渠道并核对收到的邮件；观察设定时区的到期任务。实际结果可追加记录，不能用离线演示替代。
