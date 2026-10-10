@@ -42,11 +42,11 @@ public class NewsClient {
     }
     public byte[] fetch(String url) throws Exception { return fetch(url,System.nanoTime()+TimeUnit.SECONDS.toNanos(20)); }
     public byte[] fetch(String url,long deadline) throws Exception {
-        return new cn.zaozhi.news.SafeHttpFetcher().fetch(url,deadline,null);
+        return new cn.zaozhi.news.SafeHttpFetcher(new Settings()).fetch(url,deadline,null);
     }
     public ArrayNode feed(String url,int hours) throws Exception { return parseFeed(fetch(url),url,hours,Instant.now()); }
     public ArrayNode feed(String url,int hours,long deadline) throws Exception { return parseFeed(fetch(url,deadline),url,hours,Instant.now()); }
-    public ArrayNode feed(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{return parseFeed(new cn.zaozhi.news.SafeHttpFetcher().fetch(url,ctx.deadline,ctx.budget),url,ctx.profile.path("lookback_hours").asInt(),ctx.windowEnd);}
+    public ArrayNode feed(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{return parseFeed(new cn.zaozhi.news.SafeHttpFetcher(ctx.settings).fetch(url,ctx.deadline,ctx.budget),url,ctx.profile.path("lookback_hours").asInt(),ctx.windowEnd);}
     public static ArrayNode parseFeed(byte[] data,String url,int hours,Instant now) throws Exception {
         SyndFeedInput input=new SyndFeedInput(); input.setAllowDoctypes(false);
         SyndFeed feed=input.build(new XmlReader(new ByteArrayInputStream(data)));
@@ -77,7 +77,7 @@ public class NewsClient {
         var main=doc.selectFirst("article,main");
         return clip(main==null?doc.text():main.text(),12000);
     }
-    public String article(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{var doc=Jsoup.parse(new String(new cn.zaozhi.news.SafeHttpFetcher().fetch(url,ctx.deadline,ctx.budget),StandardCharsets.UTF_8));doc.select("script,style,nav,header,footer").remove();var main=doc.selectFirst("article,main");return clip(main==null?doc.text():main.text(),100000);}
+    public String article(String url,cn.zaozhi.tool.ToolContext ctx)throws Exception{var doc=Jsoup.parse(new String(new cn.zaozhi.news.SafeHttpFetcher(ctx.settings).fetch(url,ctx.deadline,ctx.budget),StandardCharsets.UTF_8));doc.select("script,style,nav,header,footer").remove();var main=doc.selectFirst("article,main");return clip(main==null?doc.text():main.text(),100000);}
     public static String clip(String s,int max) { if(s==null)return "";return s.length()>max?s.substring(0,max):s; }
     public static ArrayNode demoNews() {
         ArrayNode a=Json.arr(); String now=Instant.now().toString();

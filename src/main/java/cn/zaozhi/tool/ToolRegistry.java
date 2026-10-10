@@ -29,7 +29,7 @@ public final class ToolRegistry {
             JsonNode source=c.sources.get(a.path("source_id").asText());
             if(source==null) throw new IllegalArgumentException("未知来源标识");
             String sid=a.path("source_id").asText(),body=c.bodies.get(sid);boolean truncated=body!=null&&c.db.one("SELECT body_truncated FROM run_sources WHERE run_id=? AND source_id=?",c.runId,sid).path("body_truncated").asInt()==1;
-            if(body==null){body=c.settings.demo?source.path("excerpt").asText():news.article(source.path("url").asText(),c);truncated=body.length()>=100000;body=NewsClient.clip(body,100000);String path="articles/"+sid+".txt";c.workspace.systemWrite(path,body);c.bodies.put(sid,body);c.db.execute("UPDATE run_sources SET body_ref=?,body_state='AVAILABLE',body_truncated=? WHERE run_id=? AND source_id=?",path,truncated?1:0,c.runId,sid);}
+            if(body==null){body=c.settings.demo?source.path("excerpt").asText():news.article(source.path("url").asText(),c);if(!c.settings.demo&&body.strip().length()<120)throw new java.io.IOException("未取得足够正文，不能把跳转占位页当作正文；可仅依据 RSS 标题/摘录说明限制，或选择其他来源");truncated=body.length()>=100000;body=NewsClient.clip(body,100000);String path="articles/"+sid+".txt";c.workspace.systemWrite(path,body);c.bodies.put(sid,body);c.db.execute("UPDATE run_sources SET body_ref=?,body_state='AVAILABLE',body_truncated=? WHERE run_id=? AND source_id=?",path,truncated?1:0,c.runId,sid);}
             return Json.object("source_id",sid,"excerpt",NewsClient.clip(body,800),"path","articles/"+sid+".txt","truncated",truncated);
         });
         add("get_history","获取当前订阅最近 30 份简报的来源索引，用于避免重复；无用户 ID 参数",object(),(a,c)->{
@@ -77,7 +77,7 @@ public final class ToolRegistry {
     private static ObjectNode string(int min,int max) { return Json.object("type","string","minLength",min,"maxLength",max); }
     private static ObjectNode integer(int min,int max){return Json.object("type","integer","minimum",min,"maximum",max);}
     private static ArrayNode demo(ToolContext c){ArrayNode rows=NewsClient.demoNews();for(JsonNode row:rows)((ObjectNode)row).put("published_at",c.windowEnd.toString());return rows;}
-    private static JsonNode retrieved(ToolContext c,ArrayNode rows)throws Exception{ArrayNode remembered=c.remember(rows),small=Json.arr();for(JsonNode row:remembered){if(small.size()>=10)break;ObjectNode compact=row.deepCopy();compact.put("excerpt",NewsClient.clip(compact.path("excerpt").asText(),400));small.add(compact);}return Json.object("sources",small,"truncated",remembered.size()!=rows.size()||small.size()!=remembered.size()||c.sources.size()>=100,"source_index","sources.json");}
+    private static JsonNode retrieved(ToolContext c,ArrayNode rows)throws Exception{ArrayNode remembered=c.remember(rows),small=Json.arr();for(JsonNode row:remembered){if(small.size()>=5)break;small.add(Json.object("source_id",row.path("source_id"),"title",NewsClient.clip(row.path("title").asText(),160),"source",NewsClient.clip(row.path("source").asText(),80),"published_at",row.path("published_at"),"excerpt",NewsClient.clip(row.path("excerpt").asText(),180)));}return Json.object("sources",small,"total_results",remembered.size(),"truncated",!remembered.isEmpty(),"source_index","sources.json","preview_note","短预览不含长链接；完整来源在只读索引，按需分段读取。发布和正文读取使用 source_id。");}
     private static ObjectNode object(Object... pairs) {
         ObjectNode properties=Json.obj(); ArrayNode required=Json.arr();
         for(int i=0;i<pairs.length;i+=2) { properties.set((String)pairs[i],(JsonNode)pairs[i+1]); required.add((String)pairs[i]); }

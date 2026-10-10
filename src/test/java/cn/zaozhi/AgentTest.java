@@ -92,4 +92,17 @@ class AgentTest {
         assertNotNull(c.candidate);
         assertFalse(registry.execute("unknown_tool",Json.obj(),c).path("ok").asBoolean());
     }
+    @Test void modelReceivesFreshResourceFeedbackWithoutTruncatingToolProtocol()throws Exception {
+        var c=context(Map.of());c.remember(Json.arr());int[] step={0};
+        LlmClient client=(messages,tools,deadline)->{
+            String system=messages.get(0).path("content").asText();int marker=system.lastIndexOf("：{");var resources=Json.parse(system.substring(marker+1));
+            assertEquals(c.settings.maxRounds-step[0],resources.path("remaining_rounds").asInt());assertTrue(resources.path("available_reservation").asLong()>0);
+            if(step[0]++==0)return DemoClient.call("get_history",Json.obj());
+            assertEquals(c.settings.maxCalls-(step[0]-1),resources.path("remaining_tool_calls").asInt());
+            assertEquals("tool",messages.get(messages.size()-1).path("role").asText());assertFalse(messages.get(messages.size()-1).path("tool_call_id").asText().isBlank());
+            if(step[0]==2)return DemoClient.call("publish_brief",Json.object("title","Brief","intro","No eligible items","items",List.of()));
+            return Json.object("role","assistant","content","done");
+        };
+        assertTrue(new AgentRunner(client,new ToolRegistry(new NewsClient())).run(c).path("empty_brief").asBoolean());assertEquals(3,step[0]);
+    }
 }

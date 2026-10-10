@@ -19,21 +19,23 @@ import org.apache.hc.core5.util.Timeout;
 public final class SafeHttpFetcher {
     private static final ExecutorService DNS_WORKERS=new ThreadPoolExecutor(2,2,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(4),r->{Thread t=new Thread(r,"bounded-news-dns");t.setDaemon(true);return t;},new ThreadPoolExecutor.AbortPolicy());
     @FunctionalInterface interface Resolver {InetAddress[] resolve(String host)throws UnknownHostException;}
-    private final Resolver resolver;private final Predicate<InetAddress> policy;private final int fixturePort;
+    private final Resolver resolver;private final Predicate<InetAddress> policy;private final int fixturePort;private final InetSocketAddress proxy;private final boolean publicDns;
     public SafeHttpFetcher(){this(InetAddress::getAllByName,NewsClient::publicAddress);}
+    public SafeHttpFetcher(Settings settings){this(InetAddress::getAllByName,NewsClient::publicAddress,0,settings.newsProxy(),settings.get("NEWS_DNS_MODE","system").equals("cloudflare"));}
     SafeHttpFetcher(Resolver resolver,Predicate<InetAddress> policy){this(resolver,policy,0);}
-    SafeHttpFetcher(Resolver resolver,Predicate<InetAddress> policy,int fixturePort){this.resolver=resolver;this.policy=policy;this.fixturePort=fixturePort;}
+    SafeHttpFetcher(Resolver resolver,Predicate<InetAddress> policy,int fixturePort){this(resolver,policy,fixturePort,null,false);}
+    SafeHttpFetcher(Resolver resolver,Predicate<InetAddress> policy,int fixturePort,InetSocketAddress proxy,boolean publicDns){this.resolver=resolver;this.policy=policy;this.fixturePort=fixturePort;this.proxy=proxy;this.publicDns=publicDns;}
     public byte[] fetch(String value,long deadline,RunBudget budget)throws Exception {
         long end=Math.min(deadline,System.nanoTime()+TimeUnit.SECONDS.toNanos(20));String current=value;
         for(int hops=0;hops<=3;hops++) {
             URI uri=URI.create(NewsClient.canonical(current));String host=uri.getHost();NewsClient.validateDomain(host);
             Future<InetAddress[]> resolution;
-            try{resolution=DNS_WORKERS.submit(()->resolver.resolve(host));}catch(RejectedExecutionException busy){throw new IOException("DNS 查询队列已满",busy);}
+            try{resolution=DNS_WORKERS.submit(()->publicDns?PublicDnsResolver.resolve(host,end,proxy,budget):resolver.resolve(host));}catch(RejectedExecutionException busy){throw new IOException("DNS 查询队列已满",busy);}
             InetAddress[] pinned;try{pinned=resolution.get(Math.max(1,end-System.nanoTime()),TimeUnit.NANOSECONDS);}catch(TimeoutException late){throw new IOException("DNS 查询超过请求期限",late);}catch(ExecutionException failure){throw new IOException("DNS 查询失败",failure.getCause());}finally{resolution.cancel(true);}
             if(pinned.length==0)throw new IllegalArgumentException("DNS 无有效地址");for(InetAddress ip:pinned)if(!policy.test(ip))throw new IllegalArgumentException("禁止连接非公网地址");
             long remaining=TimeUnit.NANOSECONDS.toMillis(end-System.nanoTime());if(remaining<=0||Thread.currentThread().isInterrupted())throw new AgentFailure("DEADLINE_EXCEEDED","新闻请求超过期限");
             DnsResolver dns=new DnsResolver(){public InetAddress[] resolve(String requested)throws UnknownHostException{if(!host.equalsIgnoreCase(requested))throw new UnknownHostException("未授权域名");return pinned.clone();}public String resolveCanonicalHostname(String requested)throws UnknownHostException{if(!host.equalsIgnoreCase(requested))throw new UnknownHostException();return host;}};
-            var builder=PoolingHttpClientConnectionManagerBuilder.create().setDnsResolver(dns).setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(Timeout.ofMilliseconds(remaining)).build());
+            var builder=PoolingHttpClientConnectionManagerBuilder.create().setDnsResolver(dns).setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(Timeout.ofMilliseconds(remaining)).setSocksProxyAddress(proxy).build());
             if(fixturePort>0)builder.setSchemePortResolver(h->fixturePort);
             var manager=builder.build();
             HttpGet request=new HttpGet(uri);request.setHeader("User-Agent","DailyAINewsAgent/1.1");request.setHeader("Accept-Encoding","gzip, deflate");
