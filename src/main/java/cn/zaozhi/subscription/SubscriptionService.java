@@ -20,7 +20,7 @@ public class SubscriptionService {
     }
     public ObjectNode update(String id, JsonNode input) {
         ObjectNode profile = Profile.validate(input);
-        db.execute("UPDATE subscriptions SET profile=? WHERE id=?", Json.stringify(profile), id);
+        db.execute("UPDATE subscriptions SET profile=?,profile_version=profile_version+1,enabled=?,updated_at=? WHERE id=?", Json.stringify(profile),profile.path("enabled").asBoolean()?1:0,Database.now(), id);
         return Json.object("id", id, "profile", profile);
     }
 }

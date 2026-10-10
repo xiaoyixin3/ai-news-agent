@@ -19,7 +19,7 @@ class FoundationTest {
         assertNotEquals(created.path("token").asText(),user.path("token_hash").asText());
         assertThrows(ApiException.class,()->service.authenticate("Bearer wrong"));
         assertNotNull(new Database(dir).authenticate(created.path("token").asText()));
-        assertEquals(1,db.one("SELECT COUNT(*) AS count FROM schema_migrations").path("count").asInt());
+        assertEquals(2,db.one("SELECT COUNT(*) AS count FROM schema_migrations").path("count").asInt());
     }
     @Test void profileEnforcesTypesTimezoneAndRanges() {
         assertThrows(IllegalArgumentException.class,()->Profile.validate(Json.object("nickname","x","max_items",11)));

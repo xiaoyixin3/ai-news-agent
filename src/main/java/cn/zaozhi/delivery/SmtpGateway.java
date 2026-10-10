@@ -14,7 +14,7 @@ public final class SmtpGateway implements MailGateway {
     public SmtpGateway(Settings settings) { this.settings=settings; }
     public void send(JsonNode brief,JsonNode profile) throws Exception {
         String host=settings.get("SMTP_HOST",""),from=settings.get("SMTP_FROM","");
-        if(host.isBlank()||from.isBlank()) throw new IllegalStateException("未配置 SMTP_HOST 或 SMTP_FROM；简报已保存在站内");
+        if(host.isBlank()||from.isBlank()) throw new MailFailure(MailFailure.Kind.PERMANENT,"SMTP_CONFIGURATION","未配置 SMTP_HOST 或 SMTP_FROM；简报已保存在站内");
         String tls=settings.get("SMTP_TLS","starttls");
         if(!tls.equals("starttls")&&!tls.equals("ssl")) throw new IllegalArgumentException("SMTP_TLS 仅支持 starttls 或 ssl");
         String user=settings.get("SMTP_USER",""),password=settings.get("SMTP_PASSWORD","");
@@ -36,6 +36,6 @@ public final class SmtpGateway implements MailGateway {
         message.setRecipient(Message.RecipientType.TO,new InternetAddress(profile.path("email").asText(),true));
         message.setSubject(brief.path("title").asText(),StandardCharsets.UTF_8.name());
         message.setText(body.toString(),StandardCharsets.UTF_8.name());
-        Transport.send(message);
+        try {Transport.send(message);} catch(MessagingException e) {throw MailFailure.classify(e);}
     }
 }

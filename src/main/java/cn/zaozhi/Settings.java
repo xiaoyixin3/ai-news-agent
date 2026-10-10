@@ -32,11 +32,16 @@ public final class Settings {
     }
     public boolean ready() { return demo || !apiKey.isBlank(); }
     public String mode() { return demo ? "demo" : "live"; }
+    public com.fasterxml.jackson.databind.node.ObjectNode snapshot() {
+        return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1","tool_schema_version","1.1",
+            "max_rounds",maxRounds,"max_calls",maxCalls,"run_timeout",runTimeout,"llm_timeout",llmTimeout,
+            "context_tokens",24000,"run_tokens",100000,"network_bytes",20*1024*1024,"workspace_bytes",10*1024*1024);
+    }
     public String redact(String value) {
         if(value==null) return "执行失败，请检查配置或稍后重试";
         for (String secret : List.of(apiKey, get("SMTP_PASSWORD", "")))
             if (!secret.isEmpty()) value = value.replace(secret, "[REDACTED]");
-        return value;
+        return value.replaceAll("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}","[EMAIL]");
     }
     private static Map<String,String> load() {
         Map<String,String> v = new HashMap<>();

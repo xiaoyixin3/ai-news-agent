@@ -72,20 +72,20 @@ class TaskLifecycleTest {
         try(varHarness harness=new varHarness(live,db,(b,profile)->{})) { assertEquals(503,assertThrows(ApiException.class,()->harness.tasks.submit(u.path("id").asText(),p,"manual",null)).status); }
     }
     @Test void mailFailureKeepsBriefAndRetryIsClaimedOnce() throws Exception {
-        var settings=new Settings(Map.of("DATA_DIR",dir.toString(),"DEMO_MODE","false","DEEPSEEK_API_KEY","fixture-key")); var db=new Database(dir);
+        var settings=new Settings(Map.of("DATA_DIR",dir.toString(),"DEMO_MODE","false","DEEPSEEK_API_KEY","fixture-key","DELIVERY_RETRY_COOLDOWN","0")); var db=new Database(dir);
         var p=Profile.validate(Json.object("nickname","邮件测试","channel","email","email","test@example.com")); var u=db.createUser(p);
         var rid=db.claim(u.path("id").asText(),p,"live","manual",null); db.execute("UPDATE runs SET status='running' WHERE id=?",rid);
         var bid=db.finish(rid,Json.object("title","测试","intro","无新闻","items",List.of()));
         AtomicInteger sends=new AtomicInteger(); CountDownLatch release=new CountDownLatch(1);
-        var delivery=new DeliveryService(settings,db,(b,profile)->{if(sends.incrementAndGet()==1) throw new IllegalStateException("temporary mail error fixture-key"); release.await(5,TimeUnit.SECONDS);});
+        var delivery=new DeliveryService(settings,db,(b,profile)->{if(sends.incrementAndGet()==1) throw new MailFailure(MailFailure.Kind.PERMANENT,"TEST_REJECT","temporary mail error fixture-key"); release.await(5,TimeUnit.SECONDS);});
         try {
-            delivery.deliver(bid,p); assertEquals("failed",db.one("SELECT delivery_status FROM briefs WHERE id=?",bid).path("delivery_status").asText());
+            delivery.deliver(bid,p); assertEquals("failed",db.one("SELECT status AS delivery_status FROM deliveries WHERE brief_id=?",bid).path("delivery_status").asText());
             assertEquals("succeeded",db.one("SELECT status FROM runs WHERE id=?",rid).path("status").asText());
-            assertFalse(db.one("SELECT delivery_error FROM briefs WHERE id=?",bid).path("delivery_error").asText().contains("fixture-key"));
+            assertFalse(db.one("SELECT error_summary AS delivery_error FROM deliveries WHERE brief_id=?",bid).path("delivery_error").asText().contains("fixture-key"));
             assertEquals(404,assertThrows(ApiException.class,()->delivery.retry("another-user",bid)).status);
             delivery.retry(u.path("id").asText(),bid);
             assertEquals(409,assertThrows(ApiException.class,()->delivery.retry(u.path("id").asText(),bid)).status);
-            release.countDown(); waitUntil(()->db.one("SELECT delivery_status FROM briefs WHERE id=?",bid).path("delivery_status").asText().equals("sent"));
+            release.countDown(); waitUntil(()->db.one("SELECT status AS delivery_status FROM deliveries WHERE brief_id=?",bid).path("delivery_status").asText().equals("sent"));
             assertEquals(2,sends.get());
         } finally { release.countDown(); delivery.close(); }
     }

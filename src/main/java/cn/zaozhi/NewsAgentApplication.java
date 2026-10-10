@@ -16,5 +16,6 @@ public class NewsAgentApplication {
         app.run(args);
     }
     @Bean Settings settings() { return new Settings(); }
-    @Bean Database database(Settings settings) { return new Database(settings.dataDir); }
+    @Bean(destroyMethod="close") cn.zaozhi.config.SingleInstanceGuard singleInstanceGuard(Settings settings) throws Exception {return new cn.zaozhi.config.SingleInstanceGuard(settings.dataDir);}
+    @Bean Database database(Settings settings,cn.zaozhi.config.SingleInstanceGuard guard) { return new Database(settings); }
 }
