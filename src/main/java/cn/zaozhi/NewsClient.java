@@ -97,21 +97,4 @@ public class NewsClient {
         a.add(Json.object("source_id","demo-research","title","演示：关注 AI 研究与应用落地","url","https://example.com/demo/research","source","离线演示资料","published_at",now,"excerpt","这是合成样例：为产品经理和研究者整理 AI 研究与应用的阅读线索。"));
         return a;
     }
-    private static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {
-        private final CompletableFuture<byte[]> body=new CompletableFuture<>();
-        private final ByteArrayOutputStream out=new ByteArrayOutputStream();
-        private final int limit; private Flow.Subscription subscription;
-        LimitedBody(int limit){this.limit=limit;}
-        public CompletionStage<byte[]> getBody(){return body;}
-        public void onSubscribe(Flow.Subscription s){subscription=s;s.request(1);}
-        public void onNext(List<ByteBuffer> chunks){
-            for(ByteBuffer chunk:chunks){
-                if(out.size()+chunk.remaining()>limit){subscription.cancel();body.completeExceptionally(new IOException("新闻内容超出大小上限"));return;}
-                byte[] bytes=new byte[chunk.remaining()];chunk.get(bytes);out.writeBytes(bytes);
-            }
-            subscription.request(1);
-        }
-        public void onError(Throwable t){body.completeExceptionally(t);}
-        public void onComplete(){body.complete(out.toByteArray());}
-    }
 }

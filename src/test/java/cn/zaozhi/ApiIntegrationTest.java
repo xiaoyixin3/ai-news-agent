@@ -34,6 +34,10 @@ class ApiIntegrationTest {
     }
     @Test void completeApiFlowAndCrossUserIsolation() throws Exception {
         assertEquals(200,request("GET","/api/health",null,null).statusCode());
+        var crossSite=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/subscriptions")).header("Origin","https://untrusted.example").header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{}")).build();
+        assertEquals(403,http.send(crossSite,HttpResponse.BodyHandlers.ofString()).statusCode());
+        var huge=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/subscriptions")).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("x".repeat(65537))).build();
+        assertEquals(413,http.send(huge,HttpResponse.BodyHandlers.ofString()).statusCode());
         assertEquals(401,request("GET","/api/briefs",null,null).statusCode());
         var first=request("POST","/api/subscriptions",null,Json.object("nickname","接口用户","enabled",false)); assertEquals(201,first.statusCode());
         String token=Json.parse(first.body()).path("token").asText();

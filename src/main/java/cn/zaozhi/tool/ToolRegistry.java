@@ -28,7 +28,16 @@ public final class ToolRegistry {
             if(source==null) throw new IllegalArgumentException("未知来源标识");
             return Json.object("source_id",a.path("source_id"),"content",c.settings.demo?source.path("excerpt").asText():news.article(source.path("url").asText(),c.deadline));
         });
-        add("get_history","获取当前订阅最近 30 份简报，用于避免重复；无用户 ID 参数",object(),(a,c)->c.db.history(c.userId,30));
+        add("get_history","获取当前订阅最近 30 份简报的来源索引，用于避免重复；无用户 ID 参数",object(),(a,c)->{
+            ArrayNode history=Json.arr();
+            for(JsonNode brief:c.db.history(c.userId,30)) {
+                if(!brief.path("mode").asText().equals(c.settings.mode())) continue;
+                ArrayNode items=Json.arr();
+                for(JsonNode item:brief.path("items")) items.add(Json.object("title",item.path("title"),"url",item.path("url"),"source",item.path("source"),"published_at",item.path("published_at")));
+                history.add(Json.object("title",brief.path("title"),"created_at",brief.path("created_at"),"items",items));
+            }
+            return history;
+        });
         JsonNode item=object("source_id",string(1,100),"summary",string(1,1500),"why_it_matters",string(1,600));
         add("publish_brief","校验并暂存最终简报，之后自然结束才保存投递；无相关新闻允许空 items 并说明原因",
             object("title",string(1,200),"intro",string(1,1500),"items",Json.object("type","array","items",item,"maxItems",10)),(a,c)->{

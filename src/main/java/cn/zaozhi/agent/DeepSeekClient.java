@@ -30,6 +30,7 @@ public final class DeepSeekClient implements LlmClient {
                 try { response=future.get(Math.min(settings.llmTimeout*1000L,remaining),TimeUnit.MILLISECONDS); }
                 catch(Exception e) { future.cancel(true); throw e; }
             } catch(Exception e) {
+                if(e instanceof InterruptedException) { Thread.currentThread().interrupt(); throw e; }
                 if(Thread.currentThread().isInterrupted()) throw new InterruptedException("任务已取消");
                 if(attempt==2) throw new IllegalStateException("模型请求超时或网络不可达，请检查模型地址和网络");
                 pause(attempt,deadline); continue;

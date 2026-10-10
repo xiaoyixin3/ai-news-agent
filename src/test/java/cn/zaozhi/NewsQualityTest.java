@@ -65,7 +65,11 @@ class NewsQualityTest {
         assertThrows(IllegalArgumentException.class,()->ws.read("../secrets"));
         Path outside=dir.resolve("outside"); Files.createDirectories(outside); Files.writeString(outside.resolve("secret"),"private");
         try { Files.createSymbolicLink(dir.resolve("workspace/link"),outside); }
-        catch(Exception e) { org.junit.jupiter.api.Assumptions.assumeTrue(false,"系统未授予创建符号链接权限；路径穿越检查已执行"); }
+        catch(Exception e) {
+            if(!System.getProperty("os.name").toLowerCase().contains("win")) throw e;
+            Process junction=new ProcessBuilder("cmd.exe","/c","mklink","/J",dir.resolve("workspace/link").toString(),outside.toString()).redirectErrorStream(true).start();
+            junction.getInputStream().readAllBytes(); assertEquals(0,junction.waitFor(),"Windows junction creation");
+        }
         assertThrows(IllegalArgumentException.class,()->ws.read("link/secret"));
     }
 }

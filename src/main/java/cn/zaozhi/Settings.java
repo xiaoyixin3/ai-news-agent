@@ -33,6 +33,7 @@ public final class Settings {
     public boolean ready() { return demo || !apiKey.isBlank(); }
     public String mode() { return demo ? "demo" : "live"; }
     public String redact(String value) {
+        if(value==null) return "执行失败，请检查配置或稍后重试";
         for (String secret : List.of(apiKey, get("SMTP_PASSWORD", "")))
             if (!secret.isEmpty()) value = value.replace(secret, "[REDACTED]");
         return value;
