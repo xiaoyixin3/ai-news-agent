@@ -1,0 +1,22 @@
+flowchart TB
+  subgraph GEN[任务生成]
+    direction LR
+    Q[QUEUED] -->|领取| R[RUNNING]
+    Q -->|取消| C[CANCELLED]
+    Q -->|重启| F[FAILED]
+    R -->|正常结束并提交| S[SUCCEEDED]
+    R -->|超时 超限 错误 重启| F
+    R -->|提交前取消| C
+  end
+  subgraph MAIL[邮件投递]
+    direction LR
+    P[PENDING] -->|领取| W[SENDING]
+    P -->|取消| X[DELIVERY_CANCELLED]
+    W -->|明确接受| T[SENT]
+    W -->|明确未接受| E[DELIVERY_FAILED]
+    W -->|超时或重启| U[UNKNOWN]
+    E -->|有限重试| W
+    U -->|用户明确重试| W
+    U -->|取消| X
+    E -->|取消| X
+  end

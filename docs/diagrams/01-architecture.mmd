@@ -1,0 +1,24 @@
+flowchart TB
+  UI[中文页面] --> API[HTTP API 与令牌认证]
+  API --> SUB[订阅与偏好]
+  API --> RUN[任务服务]
+  SCH[时区调度器] --> RUN
+  RUN --> WORK[有界任务线程池]
+  WORK --> AGENT[AgentRunner 与预算]
+  AGENT <--> LLM[DeepSeek 模型适配器]
+  AGENT --> GATE[工具 schema 与权限检查]
+  GATE --> TOOLS[十个受控工具]
+  TOOLS --> NEWS[来源注册与安全 HTTP]
+  TOOLS --> WS[本次工作区]
+  TOOLS --> CAND[候选提交与校验]
+  AGENT --> COMMIT[正常结束后复检并提交]
+  CAND --> COMMIT
+  COMMIT --> DB[(SQLite)]
+  SUB --> DB
+  RUN --> DB
+  AGENT --> TRACE[有界事件与脱敏详情]
+  TRACE --> DB
+  TRACE --> OBJ[外置审计对象]
+  DB --> DELIVERY[独立邮件投递器]
+  DELIVERY --> SMTP[SMTP]
+  NEWS --> PUBLIC[允许的公网新闻来源]

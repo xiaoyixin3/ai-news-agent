@@ -1,0 +1,51 @@
+erDiagram
+  subscriptions ||--o{ runs : owns
+  runs ||--o{ run_sources : registers
+  runs ||--o{ events : traces
+  runs ||--o| briefs : commits
+  briefs ||--o| deliveries : emails
+  runs o|--o{ runs : retry_of
+  subscriptions {
+    TEXT id PK
+    TEXT token_hash UK
+    TEXT profile_json
+  }
+  runs {
+    TEXT id PK
+    TEXT subscription_id FK
+    TEXT status
+    TEXT phase
+    TEXT mode
+    TEXT schedule_date
+    TEXT preferences_json
+    TEXT retry_of FK
+  }
+  run_sources {
+    TEXT run_id PK,FK
+    TEXT source_id PK
+    TEXT canonical_url
+    INTEGER published_at
+    TEXT body_ref
+  }
+  events {
+    INTEGER id PK
+    TEXT run_id FK
+    INTEGER seq
+    TEXT step_id
+    TEXT payload_state
+    TEXT payload_ref
+  }
+  briefs {
+    TEXT id PK
+    TEXT run_id FK,UK
+    TEXT subscription_id FK
+    TEXT mode
+    TEXT items_json
+  }
+  deliveries {
+    TEXT id PK
+    TEXT brief_id FK,UK
+    TEXT status
+    TEXT recipient
+    INTEGER attempt_count
+  }
