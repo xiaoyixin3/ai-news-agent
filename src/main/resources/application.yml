@@ -1,0 +1,14 @@
+server:
+  address: 127.0.0.1
+  tomcat:
+    max-http-form-post-size: 64KB
+    max-swallow-size: 64KB
+spring:
+  application:
+    name: ai-news-agent
+  main:
+    banner-mode: off
+logging:
+  level:
+    root: WARN
+    cn.zaozhi: INFO
