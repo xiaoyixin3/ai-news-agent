@@ -9,7 +9,7 @@
 | 邮件非持久、提交后丢通知 | deliveries 与 brief/成功状态原子提交，独立扫描器；V11PersistenceTest |
 | 数据库归属与迁移 | 001 保留，002 映射旧库，003 资源触发器；checksum、复合外键、FK 每连接开启；V11PersistenceTest |
 | 写只读资料、真实 Shell、上下文含邮箱 | 仅 notes/drafts 可写，bash 为 Java 虚拟 pwd/ls，邮箱与密钥不入模型资料，分段正文/历史；V11RuntimeTest |
-| DNS 二次解析与资源边界 | 逐跳验证与实际地址绑定，保留 Host/TLS 默认校验，DNS 期限、压缩后上限、累计字节；SafeHttpFetcherTest |
+| DNS 二次解析与资源边界 | 逐跳验证与实际地址绑定，保留 Host/TLS 默认校验，DNS 期限、压缩后上限、累计字节；SafeHttpFetcherTest/ProxyDnsTest |
 | 模型/工作区/审计预算 | 每次尝试预留、usage 调账、未知不释放，文件及工作区限额，审计阈值外置与配额；V11RuntimeTest |
 | 候选丢失、半批执行、结束协议 | 接受候选保留，整批预检，finish_reason 与请求一致；AgentTest/V11RuntimeTest |
 | 单实例、幂等、冻结与取消 | 初始化前持锁、DB 短事务裁决、运行快照、Idempotency-Key、retry_of、终态/期限提交裁决；V11PersistenceTest/V11MaintenanceTest |
@@ -24,13 +24,13 @@
 
 ## 自动验证
 
-Maven 全部 **60 用例，0 失败、0 错误**。包含原 19 个兼容回归、10 个持久化故障/约束、9 个 Runtime、6 个网络、7 个清理/恢复、9 组离线标注。执行 `mvnw.cmd test`；JAR 已由 `mvnw.cmd package` 构建。
+Maven 全部 **68 用例，0 失败、0 错误**。包含20 个兼容/预算反馈回归、10 个持久化故障/约束、11 个 Runtime、11 个网络、7 个清理/恢复、9 组离线标注。执行 `mvnw.cmd test`；JAR 已由 `mvnw.cmd package` 构建。
 
 网络用例通过本地 HTTP 测试服务器验证实际连接和原域名 Host，并注入 DNS/私网/跳转/压缩边界；这不是 Google News 或外网 HTTPS 可用性的证明。SMTP 用例使用可控 MailGateway，覆盖永久/临时/不确定与重启状态；不等于真实服务商接收。
 
 旧真实数据副本升级与维护 CLI 验证：升级前后均为 1 个订阅、2 个 run、2 份简报、22 个事件；完整性与外键通过，user_version=3。对该副本执行 CLI backup → restore，恢复后数量不变。原数据启动升级前另保留升级快照。
 
-8080 新版已启动，健康状态为 demo/scheduler=true/smtp_ready=false；实际旧库升级后完整性为 ok、无外键错误，原 2 份历史简报保留。新版离线录屏另行交付，不把录屏计为真实模型证据。
+初次离线验收时 8080 健康状态为 demo/scheduler=true/smtp_ready=false；实际旧库升级后完整性为 ok、无外键错误，原 2 份历史简报保留。新版离线录屏另行交付，不把录屏计为真实模型证据。
 
 ## 浏览器验证
 
@@ -50,8 +50,8 @@ Maven 全部 **60 用例，0 失败、0 错误**。包含原 19 个兼容回归�
 
 ## 仍需外部配置或人工完成
 
-- 真实 DeepSeek 密钥和 SMTP 配置本次均未提供。真实模型自主检索、多轮策略、真实邮件接收与供应商故障联调仍待执行。
-- 新传输的 Hugging Face、Ars Technica、Google News 和正文真实连通性仍待实测；旧版曾成功解析 Ars RSS 的记录不能替代新传输验收。
+- 真实 DeepSeek 密钥已在本机填写，站内端到端联调和多轮自主工具调用已通过，见[真实联调报告](live-acceptance.md)。SMTP 仍未配置，真实邮件接收与供应商故障联调待执行。
+- 新传输的三个 RSS 来源已实测可用，Hugging Face 与 Ars 正文可读；Google News 跳转占位页被拒绝视为正文。另有 5 个真实模式浏览器检查通过；不代表所有网站与未来请求可用。
 - 摘要事实支持、事件级转载重复与身份相关性需人审，统计页面相应质量率为空；离线策略通过不能把质量率写成 100%。
 - 当前是本地单实例应用；公网账户、跨设备令牌恢复、分布式调度未纳入此版。未运行长期存储压力或真实 TLS 证书故障专项测试。
 
