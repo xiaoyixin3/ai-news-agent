@@ -28,7 +28,7 @@ public final class AgentRunner {
             messages.add(assistant);
             if(requested.isMissingNode() || requested.isEmpty()) {
                 if(ctx.candidate==null) throw new IllegalStateException("模型未通过 publish_brief 提交有效简报就结束了");
-                return ctx.candidate;
+                return new cn.zaozhi.brief.BriefValidator().validate(ctx.candidate,ctx);
             }
             for(JsonNode call:requested) {
                 if(++calls>ctx.settings.maxCalls) throw new IllegalStateException("工具调用次数达到上限");

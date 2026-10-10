@@ -32,6 +32,7 @@ public final class ToolRegistry {
         JsonNode item=object("source_id",string(1,100),"summary",string(1,1500),"why_it_matters",string(1,600));
         add("publish_brief","校验并暂存最终简报，之后自然结束才保存投递；无相关新闻允许空 items 并说明原因",
             object("title",string(1,200),"intro",string(1,1500),"items",Json.object("type","array","items",item,"maxItems",10)),(a,c)->{
+                c.candidate=null;
                 c.candidate=new BriefValidator().validate(a,c); return Json.object("accepted",true,"items",c.candidate.path("items").size(),"message","候选简报已通过校验，可以自然结束");
             });
     }

@@ -22,7 +22,7 @@ public class NewsClient {
         .add(Json.object("name","Google News","url","使用 search_news 按话题搜索"));
 
     public static String canonical(String value) {
-        URI u=URI.create(value);
+        URI u=URI.create(value).normalize();
         if (!List.of("http","https").contains(u.getScheme()) || u.getHost()==null || u.getUserInfo()!=null || (u.getPort()!=-1 && u.getPort()!=80 && u.getPort()!=443)) throw new IllegalArgumentException("仅支持公开 HTTP(S) 链接和标准端口");
         String query=u.getRawQuery();
         if (query!=null) query=Arrays.stream(query.split("&")).filter(x->!x.toLowerCase(Locale.ROOT).matches("(utm_[^=]*|fbclid|gclid)=.*")).reduce((a,b)->a+"&"+b).orElse(null);
@@ -72,7 +72,7 @@ public class NewsClient {
             if(age < -300 || age > hours*3600L) continue;
             String link;
             try { link=canonical(URI.create(url).resolve(entry.getLink()).toString()); } catch(Exception e) { continue; }
-            if(!used.add(link)) continue;
+            if(entry.getTitle()==null || entry.getTitle().isBlank() || !used.add(link)) continue;
             String excerpt=entry.getDescription()==null?"":Jsoup.parse(entry.getDescription().getValue()).text();
             String source=entry.getSource()==null?feed.getTitle():entry.getSource().getTitle();
             articles.add(Json.object("source_id",Database.hash(link).substring(0,16),"title",clip(entry.getTitle(),400),"url",link,
