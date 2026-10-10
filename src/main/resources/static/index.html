@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>早知 AI · 每日新闻助手</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/style.css"></head>
+<body>
+  <header class="topbar"><a class="brand" href="/">早知 AI</a><span id="mode" class="mode" title="正在读取服务状态">连接中</span></header>
+  <main>
+    <section class="intro"><h1>每天一份，与你有关的 AI 新闻</h1><p>设置关注方向，让 Agent 为你整理每日简报。</p></section>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <div class="workspace">
+      <section class="panel preferences" aria-labelledby="preferences-title">
+        <h2 id="preferences-title">订阅偏好</h2>
+        <form id="preferences-form">
+          <label>昵称<input name="nickname" required maxlength="80" placeholder="例如：小明" autocomplete="nickname"></label>
+          <label>身份 / 角色<input name="role" maxlength="200" placeholder="例如：产品经理、AI 研究者、创业者"></label>
+          <label>关注话题<input name="topics" placeholder="例如：大模型、AI 应用、行业动态（用逗号分隔）"></label>
+          <label>关键词<input name="keywords" placeholder="例如：DeepSeek、Claude、AI Agent（用逗号分隔）"></label>
+          <label>排除关键词<input name="exclude" placeholder="例如：招聘、广告、无关的公司（用逗号分隔）"></label>
+          <div class="fields-row"><label>每日推送时间<input name="time" type="time" required value="09:00"></label><label>时区<select name="timezone" aria-label="时区"><option value="Asia/Shanghai">北京时间</option><option value="Asia/Tokyo">东京时间</option><option value="Europe/London">伦敦时间</option><option value="America/New_York">纽约时间</option><option value="UTC">UTC</option></select></label></div>
+          <div class="fields-row"><label>最多新闻条数<input name="max_items" type="number" min="1" max="10" required value="5"></label><label>回看小时数<input name="lookback_hours" type="number" min="1" max="168" required value="48"></label></div>
+          <label>推送渠道<select name="channel" id="channel" aria-label="推送渠道"><option value="inbox">站内收件箱</option><option value="email">邮件 + 站内收件箱</option></select></label>
+          <label id="email-field" hidden>接收邮箱<input name="email" type="email" maxlength="200" placeholder="name@example.com" autocomplete="email"><small>邮件需要服务端配置；演示模式只保存到站内。</small></label>
+          <label class="checkbox"><input name="enabled" type="checkbox" checked><span>开启每日自动简报<small>按设定时间生成；需要服务持续运行。</small></span></label>
+          <button type="submit" id="save" class="primary full">保存偏好</button>
+        </form>
+      </section>
+      <div class="results">
+        <section class="panel inbox" aria-labelledby="inbox-title">
+          <div class="section-head"><h2 id="inbox-title">简报收件箱</h2><button id="generate" type="button" class="primary">生成简报</button></div>
+          <p id="generation-status" class="subtle" role="status" aria-live="polite" hidden></p>
+          <div id="history-controls" class="history-controls" hidden><label for="history-select">历史简报</label><select id="history-select"></select><button id="previous" type="button" class="quiet">上一页</button><button id="next" type="button" class="quiet">下一页</button></div>
+          <div id="brief-content" class="brief-content"><div class="empty"><h3>你的第一份简报，从这里开始</h3><p>保存偏好后，点击生成简报。</p></div></div>
+        </section>
+        <section class="panel runs" aria-labelledby="runs-title"><h2 id="runs-title">运行记录</h2><p class="subtle">生成后可查看工具调用过程。</p><div id="runs-content"><div class="empty run-empty"><p>暂无运行记录<br><span>生成简报后，这里将显示工具调用的详细过程。</span></p></div></div></section>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
