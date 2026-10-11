@@ -20,8 +20,7 @@ public final class DeepSeekClient implements LlmClient {
     @Override public ObjectNode next(ArrayNode messages,ArrayNode tools,long deadline,RunBudget budget)throws Exception{return request(messages,tools,deadline,budget);}
     private ObjectNode request(ArrayNode messages,ArrayNode tools,long deadline,RunBudget budget)throws Exception {
         if(settings.apiKey.isBlank()) throw new IllegalStateException("真实模式需要配置 DEEPSEEK_API_KEY");
-        String body=Json.stringify(Json.object("model",settings.model,"messages",messages,"tools",tools,"tool_choice","auto","stream",false,
-            "thinking",Json.object("type","disabled"),"max_tokens",4096));
+        String body=requestBody(messages,tools,settings.model);
         for(int attempt=0;attempt<3;attempt++) {
             int allocation=budget==null?0:budget.reserve(body);
             long remaining=TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime());
@@ -59,6 +58,10 @@ public final class DeepSeekClient implements LlmClient {
             return clean;
         }
         throw new IllegalStateException("模型调用失败");
+    }
+    static String requestBody(ArrayNode messages,ArrayNode tools,String model) {
+        return Json.stringify(Json.object("model",model,"messages",messages,"tools",tools,"tool_choice","auto","stream",false,
+            "thinking",Json.object("type","disabled"),"max_tokens",4096));
     }
     private static void pause(int attempt,long deadline) throws InterruptedException {
         long wait=Math.min(500L*(1L<<attempt),TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime()));

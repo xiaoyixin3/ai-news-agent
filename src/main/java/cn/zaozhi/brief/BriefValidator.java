@@ -25,7 +25,7 @@ public final class BriefValidator {
             try { published=Instant.parse(source.path("published_at").asText()); } catch(Exception e) { throw new IllegalArgumentException("新闻缺少有效发布时间"); }
             if(published.isAfter(ctx.windowEnd)||published.isBefore(ctx.windowStart))throw new IllegalArgumentException("新闻不在任务创建时冻结的时间窗口内");
             String url=NewsClient.canonical(source.path("url").asText());
-            if(!used.add(url)) throw new IllegalArgumentException("新闻链接已在本次简报或近期历史中出现");
+            if(!used.add(url)) throw new IllegalArgumentException("新闻链接已在本次简报或近期历史中出现；请移除 source_id="+item.path("source_id").asText()+" 对应条目，保留未重复来源；全部重复时提交空 items 并说明原因");
             if(item.path("summary").asText().isBlank() || item.path("why_it_matters").asText().isBlank()) throw new IllegalArgumentException("每条新闻必须包含摘要和与你相关的意义");
             String sid=item.path("source_id").asText(),summary=item.path("summary").asText();
             bounded(summary,ctx.bodies.containsKey(sid)?360:160,"摘要（仅 RSS 证据最多 160 字，正文证据最多 360 字）");bounded(item.path("why_it_matters").asText(),160,"意义说明");
