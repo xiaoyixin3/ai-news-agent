@@ -29,6 +29,5 @@ public final class Workspace {
             for(Path p:paths.limit(500).toList()){if(!Files.isRegularFile(p,LinkOption.NOFOLLOW_LINKS))continue;String virtual=root.relativize(p).toString().replace('\\','/');if(!virtual.startsWith("articles/")&&!virtual.startsWith("notes/")&&!virtual.startsWith("drafts/")&&!virtual.equals("history.json")&&!virtual.startsWith("history/"))continue;String content=Files.readString(resolve(virtual));String[] lines=content.split("\\R");for(int i=0;i<lines.length&&results.size()<limit;i++)if(lines[i].toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)))results.add(Json.object("path",virtual,"line",i+1,"text",NewsClient.clip(lines[i],300)));if(results.size()>=limit)break;}}
         return results;
     }
-    public String bash(String command,long deadline)throws Exception{if(!Set.of("pwd","ls").contains(command))throw new IllegalArgumentException("仅接受 pwd 或 ls 字面值");return command.equals("pwd")?"/workspace":Json.stringify(list("."));}
 }
 

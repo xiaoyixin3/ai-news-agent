@@ -18,7 +18,7 @@ public final class ToolRegistry {
         var searchSchema=object("keyword",string(1,100),"dir",string(1,200),"limit",integer(1,20));searchSchema.set("required",Json.tree(List.of("keyword","dir")));
         add("search_content","搜索本次正文、历史摘要、笔记与草稿；最多 20 条",searchSchema,(a,c)->c.workspace.search(a.path("keyword").asText(),a.path("dir").asText(),a.path("limit").asInt(20)));
         add("write_file","在本次工作区写入笔记或草稿，写文件不等于发布",object("path",string(1,200),"content",string(0,64000)),(a,c)->{c.workspace.write(a.path("path").asText(),a.path("content").asText()); return Json.object("saved",true);});
-        add("bash","Java 只读适配，仅接受 pwd 或 ls，不启动 Shell",object("command",Json.object("type","string","enum",List.of("pwd","ls"))),(a,c)->Json.tree(c.workspace.bash(a.path("command").asText(),c.deadline)));
+        add("bash","通过真实 PowerShell/Bash 执行固定 pwd 或 ls；禁止参数、组合命令和任意脚本",object("command",string(1,200)),(a,c)->new ShellExecutor(c.settings).execute(a.path("command").asText(),c.workspace,c.deadline,c::checkTime,event->c.db.event(c.runId,"shell",event)));
         add("fetch_rss","读取白名单 RSS；取得本次固定时间窗口来源",object("url",string(1,2000)),(a,c)->retrieved(c,c.settings.demo?demo(c):news.feed(a.path("url").asText(),c)));
         add("search_news","使用自己构造的关键词搜索 Google News RSS，可多次搜索或换查询",object("query",string(1,300)),(a,c)->{
             String query=a.path("query").asText()+" when:"+c.profile.path("lookback_hours").asInt()+"h";
@@ -62,6 +62,7 @@ public final class ToolRegistry {
         } catch(Exception e) {
             if(e instanceof cn.zaozhi.agent.AgentFailure failure){if(!failure.code.equals("NO_USABLE_SOURCE"))throw failure;return Json.object("ok",false,"error_code",failure.code,"message",failure.getMessage(),"retryable",true,"data",null,"truncated",false);}
             ctx.checkTime();
+            if(e instanceof ShellExecutor.ShellFailure failure)return Json.object("ok",false,"error_code",failure.code,"message",failure.getMessage(),"retryable",false,"data",failure.data,"truncated",failure.data.path("truncated").asBoolean());
             if(name.equals("fetch_rss")||name.equals("search_news"))ctx.failedSources++;
             return Json.object("ok",false,"error_code",e instanceof IllegalArgumentException?"POLICY_OR_ARGUMENT_REJECTED":"TOOL_FAILED","message",ctx.settings.redact(NewsClient.clip(e.getMessage(),400)),"retryable",!(e instanceof IllegalArgumentException),"data",null,"truncated",false);
         }

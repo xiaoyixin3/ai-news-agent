@@ -22,6 +22,7 @@ public final class Settings {
         if(port<1||port>65535||maxRounds<1||maxRounds>100||maxCalls<1||maxCalls>200||runTimeout<1||runTimeout>1800||llmTimeout<1||llmTimeout>300) throw new IllegalArgumentException("环境配置超出允许范围");
         limit("CONTEXT_TOKEN_LIMIT",24000,64,128000);limit("RUN_TOKEN_LIMIT",100000,1000,1000000);limit("NETWORK_BYTE_LIMIT",20*1024*1024,1,100*1024*1024);limit("WORKSPACE_BYTE_LIMIT",10*1024*1024,64,50*1024*1024);limit("DELIVERY_RETRY_COOLDOWN",30,0,600);
         if(!Set.of("system","cloudflare").contains(get("NEWS_DNS_MODE","system")))throw new IllegalArgumentException("NEWS_DNS_MODE 必须为 system 或 cloudflare");newsProxy();
+        limit("SHELL_TIMEOUT_MS",5000,100,5000);
         java.net.URI base=java.net.URI.create(baseUrl);
         if(!List.of("https","http").contains(base.getScheme())||base.getHost()==null||base.getUserInfo()!=null||base.getQuery()!=null||base.getFragment()!=null) throw new IllegalArgumentException("LLM_BASE_URL 必须是有效 HTTP(S) 地址");
     }
@@ -34,10 +35,11 @@ public final class Settings {
         return Boolean.parseBoolean(value);
     }
     public boolean ready() { return demo || !apiKey.isBlank(); }
+    public boolean smtpReady() { return !get("SMTP_HOST", "").isBlank() && !get("SMTP_FROM", "").isBlank(); }
     public java.net.InetSocketAddress newsProxy(){String value=get("NEWS_SOCKS_PROXY","");if(value.isBlank())return null;var u=java.net.URI.create(value);if(u.getScheme()==null||u.getHost()==null||!Set.of("socks5","socks5h").contains(u.getScheme())||!Set.of("127.0.0.1","localhost","[::1]","::1").contains(u.getHost())||u.getPort()<1||u.getPort()>65535||u.getUserInfo()!=null||u.getQuery()!=null||u.getFragment()!=null||u.getPath()==null||!u.getPath().isEmpty())throw new IllegalArgumentException("NEWS_SOCKS_PROXY 仅支持明确配置的本机 SOCKS 端口，不支持认证或远端地址");return new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(),u.getPort());}
     public String mode() { return demo ? "demo" : "live"; }
     public com.fasterxml.jackson.databind.node.ObjectNode snapshot() {
-        return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1.1","tool_schema_version","1.1.1",
+        return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1.2","tool_schema_version","1.1.2","shell_timeout_ms",integer("SHELL_TIMEOUT_MS",5000),
             "max_rounds",maxRounds,"max_calls",maxCalls,"run_timeout",runTimeout,"llm_timeout",llmTimeout,
             "context_tokens",integer("CONTEXT_TOKEN_LIMIT",24000),"run_tokens",integer("RUN_TOKEN_LIMIT",100000),"network_bytes",integer("NETWORK_BYTE_LIMIT",20*1024*1024),"workspace_bytes",integer("WORKSPACE_BYTE_LIMIT",10*1024*1024),"news_dns_mode",get("NEWS_DNS_MODE","system"),"news_proxy",get("NEWS_SOCKS_PROXY",""));
     }
