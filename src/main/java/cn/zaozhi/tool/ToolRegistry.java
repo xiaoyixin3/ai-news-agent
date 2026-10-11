@@ -43,9 +43,9 @@ public final class ToolRegistry {
             ArrayNode preview=Json.arr();for(JsonNode brief:history){if(preview.size()>=3)break;ObjectNode small=brief.deepCopy();ArrayNode few=Json.arr();for(JsonNode row:brief.path("items")){if(few.size()>=3)break;ObjectNode entry=row.deepCopy();entry.put("title",NewsClient.clip(entry.path("title").asText(),200));few.add(entry);}small.set("items",few);small.put("title",NewsClient.clip(small.path("title").asText(),200));preview.add(small);}
             return Json.object("brief_count",history.size(),"preview",preview,"path","history/index.json","truncated",history.size()>3||history.toString().length()>preview.toString().length());
         });
-        JsonNode item=object("source_id",string(1,100),"summary",string(1,1500),"why_it_matters",string(1,600));
+        JsonNode item=object("source_id",string(1,100),"summary",string(1,360),"why_it_matters",string(1,160));
         add("publish_brief","校验并暂存最终简报，之后自然结束才保存投递；无相关新闻允许空 items 并说明原因",
-            object("title",string(1,200),"intro",string(1,1500),"items",Json.object("type","array","items",item,"maxItems",10)),(a,c)->{
+            object("title",string(1,200),"intro",string(1,300),"items",Json.object("type","array","items",item,"maxItems",10)),(a,c)->{
                 ObjectNode accepted=new BriefValidator().validate(a,c);c.candidate=accepted; return Json.object("accepted",true,"items",accepted.path("items").size(),"message","候选已接受，尚未正式发布；正常结束后提交");
             });
     }
@@ -61,7 +61,7 @@ public final class ToolRegistry {
             return Json.object("ok",true,"error_code",null,"message","完成","retryable",false,"data",result,"truncated",result.path("truncated").asBoolean(false));
         } catch(Exception e) {
             if(e instanceof cn.zaozhi.agent.AgentFailure failure){if(!failure.code.equals("NO_USABLE_SOURCE"))throw failure;return Json.object("ok",false,"error_code",failure.code,"message",failure.getMessage(),"retryable",true,"data",null,"truncated",false);}
-            if(Thread.currentThread().isInterrupted()) throw new cn.zaozhi.agent.AgentFailure("CANCELLED","任务被取消");
+            ctx.checkTime();
             if(name.equals("fetch_rss")||name.equals("search_news"))ctx.failedSources++;
             return Json.object("ok",false,"error_code",e instanceof IllegalArgumentException?"POLICY_OR_ARGUMENT_REJECTED":"TOOL_FAILED","message",ctx.settings.redact(NewsClient.clip(e.getMessage(),400)),"retryable",!(e instanceof IllegalArgumentException),"data",null,"truncated",false);
         }

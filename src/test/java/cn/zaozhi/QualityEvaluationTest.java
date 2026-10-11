@@ -1,0 +1,16 @@
+package cn.zaozhi;
+
+import cn.zaozhi.evaluation.QualityEvaluation;
+import com.fasterxml.jackson.databind.node.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+class QualityEvaluationTest {
+    private ObjectNode run(String id){String text="Source A reports 20 percent improvement. No profit forecast.";return Json.object("run_id",id,"role","Java developer","brief",Json.object("items",Json.arr().add(Json.object("source_id","a","summary","改善 20%","evidence_scope","extracted_body")).add(Json.object("source_id","b","summary","同事件转载","evidence_scope","rss_excerpt"))),"evidence",Json.object("a",Json.object("text",text,"sha256",Database.hash(text),"scope","extracted_body"),"b",Json.object("text","Source B only contains a headline","sha256",Database.hash("Source B only contains a headline"),"scope","rss_excerpt")));}
+    private ObjectNode bundle(){return Json.object("runs",Json.arr().add(run("r1")).add(run("r2")));}
+    private ObjectNode labels(String kind){var result=new QualityEvaluation().template(bundle());result.set("reviewer",Json.object("kind",kind,"name","test reviewer"));for(var review:result.path("reviews"))((ObjectNode)review).put("event_id","same-event");((ArrayNode)result.path("reviews").get(0).path("facts")).add(Json.object("claim","改善 20%","verdict","supported","quote","20 percent improvement"));((ArrayNode)result.path("reviews").get(1).path("facts")).add(Json.object("claim","利润将增长","verdict","uncertain","quote",""));return result;}
+    @Test void assistedLabelsNeverPopulateHumanRateAndDuplicatesArePerBrief(){var report=new QualityEvaluation().evaluate(bundle(),labels("assisted"));assertTrue(report.path("fact_support_rate").isNull());assertEquals(.5,report.path("assisted_fact_support_rate").asDouble());assertEquals(2,report.path("duplicate_items").asInt());assertEquals(.5,report.path("semantic_duplicate_rate").asDouble());assertEquals(2,report.path("checked_facts").asInt());}
+    @Test void humanFactsIncludeUncertainInDenominator(){var report=new QualityEvaluation().evaluate(bundle(),labels("human"));assertEquals(.5,report.path("fact_support_rate").asDouble());assertTrue(report.path("assisted_fact_support_rate").isNull());}
+    @Test void rejectsOtherSourceQuoteHashTamperingAndIncompleteReview(){var labels=labels("assisted");((ObjectNode)labels.path("reviews").get(0).path("facts").get(0)).put("quote","Source B only contains a headline");assertThrows(IllegalArgumentException.class,()->new QualityEvaluation().evaluate(bundle(),labels));var changed=bundle();((ObjectNode)changed.path("runs").get(0).path("evidence").path("a")).put("text","tampered");assertThrows(IllegalArgumentException.class,()->new QualityEvaluation().evaluate(changed,labels("assisted")));var incomplete=labels("assisted");((ArrayNode)incomplete.path("reviews")).remove(3);assertThrows(IllegalArgumentException.class,()->new QualityEvaluation().evaluate(bundle(),incomplete));}
+    @Test void unreviewedTemplateLeavesMetricsUnknown(){var report=new QualityEvaluation().evaluate(bundle(),new QualityEvaluation().template(bundle()));assertTrue(report.path("fact_support_rate").isNull());assertTrue(report.path("semantic_duplicate_rate").isNull());assertEquals(0,report.path("checked_facts").asInt());}
+}

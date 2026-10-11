@@ -37,7 +37,7 @@ public final class Settings {
     public java.net.InetSocketAddress newsProxy(){String value=get("NEWS_SOCKS_PROXY","");if(value.isBlank())return null;var u=java.net.URI.create(value);if(u.getScheme()==null||u.getHost()==null||!Set.of("socks5","socks5h").contains(u.getScheme())||!Set.of("127.0.0.1","localhost","[::1]","::1").contains(u.getHost())||u.getPort()<1||u.getPort()>65535||u.getUserInfo()!=null||u.getQuery()!=null||u.getFragment()!=null||u.getPath()==null||!u.getPath().isEmpty())throw new IllegalArgumentException("NEWS_SOCKS_PROXY 仅支持明确配置的本机 SOCKS 端口，不支持认证或远端地址");return new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(),u.getPort());}
     public String mode() { return demo ? "demo" : "live"; }
     public com.fasterxml.jackson.databind.node.ObjectNode snapshot() {
-        return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1","tool_schema_version","1.1",
+        return Json.object("model",model,"base_url",baseUrl,"prompt_version","news-1.1.1","tool_schema_version","1.1.1",
             "max_rounds",maxRounds,"max_calls",maxCalls,"run_timeout",runTimeout,"llm_timeout",llmTimeout,
             "context_tokens",integer("CONTEXT_TOKEN_LIMIT",24000),"run_tokens",integer("RUN_TOKEN_LIMIT",100000),"network_bytes",integer("NETWORK_BYTE_LIMIT",20*1024*1024),"workspace_bytes",integer("WORKSPACE_BYTE_LIMIT",10*1024*1024),"news_dns_mode",get("NEWS_DNS_MODE","system"),"news_proxy",get("NEWS_SOCKS_PROXY",""));
     }

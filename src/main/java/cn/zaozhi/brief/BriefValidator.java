@@ -10,6 +10,7 @@ import java.util.*;
 public final class BriefValidator {
     public ObjectNode validate(JsonNode submitted,ToolContext ctx) {
         if(submitted.path("title").asText().isBlank() || submitted.path("intro").asText().isBlank()) throw new IllegalArgumentException("标题与导语不能为空；无新闻时请说明原因");
+        bounded(submitted.path("title").asText(),200,"标题");bounded(submitted.path("intro").asText(),300,"导语");
         JsonNode items=submitted.path("items");
         if(!items.isArray() || items.size()>ctx.profile.path("max_items").asInt()) throw new IllegalArgumentException("简报条数超过订阅上限");
         Set<String> used=new HashSet<>();
@@ -26,6 +27,13 @@ public final class BriefValidator {
             String url=NewsClient.canonical(source.path("url").asText());
             if(!used.add(url)) throw new IllegalArgumentException("新闻链接已在本次简报或近期历史中出现");
             if(item.path("summary").asText().isBlank() || item.path("why_it_matters").asText().isBlank()) throw new IllegalArgumentException("每条新闻必须包含摘要和与你相关的意义");
+            String sid=item.path("source_id").asText(),summary=item.path("summary").asText();
+            bounded(summary,ctx.bodies.containsKey(sid)?360:160,"摘要（仅 RSS 证据最多 160 字，正文证据最多 360 字）");bounded(item.path("why_it_matters").asText(),160,"意义说明");
+            String text=normalized(summary),evidence=normalized(source.path("title").asText()+" "+source.path("excerpt").asText()+" "+ctx.bodies.getOrDefault(sid,""));
+            for(var other:ctx.sources.entrySet())if(!other.getKey().equals(sid)){
+                String otherTitle=normalized(other.getValue().path("title").asText()),otherUrl=other.getValue().path("url").asText();
+                if((otherTitle.length()>=16&&text.contains(otherTitle)&&!evidence.contains(otherTitle))||(!otherUrl.isBlank()&&summary.contains(otherUrl)&&!evidence.contains(normalized(otherUrl))))throw new IllegalArgumentException("摘要混入另一来源的标题或链接；请分别提交来源，或只保留当前来源有证据的内容");
+            }
             String haystack=(submitted.path("title").asText()+" "+submitted.path("intro").asText()+" "+source.path("title").asText()+" "+source.path("excerpt").asText()+" "+ctx.bodies.getOrDefault(item.path("source_id").asText(),"")+" "+item.path("summary").asText()+" "+item.path("why_it_matters").asText()).toLowerCase(Locale.ROOT);
             for(JsonNode term:ctx.profile.path("exclude")) if(haystack.contains(term.asText().toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("新闻包含排除关键词："+term.asText());
             ObjectNode resolved=source.deepCopy(); resolved.remove("excerpt"); resolved.put("url",url);
@@ -37,4 +45,6 @@ public final class BriefValidator {
         if(clean.isEmpty()&&ctx.usableSources==0)throw new cn.zaozhi.agent.AgentFailure("NO_USABLE_SOURCE","未取得可用来源，不能用空简报代替来源失败");
         ObjectNode result=Json.object("title",submitted.path("title"),"intro",submitted.path("intro"),"items",clean,"empty_brief",clean.isEmpty());if(Json.stringify(result).getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)throw new IllegalArgumentException("简报总字节超过 64 KiB");return result;
     }
+    private static void bounded(String text,int max,String field){if(text.codePointCount(0,text.length())>max)throw new IllegalArgumentException(field+"超过 "+max+" 字；请简写后重新提交，系统不会截断已接受候选");}
+    private static String normalized(String text){return text.toLowerCase(Locale.ROOT).replaceAll("\\s+"," ").strip();}
 }
