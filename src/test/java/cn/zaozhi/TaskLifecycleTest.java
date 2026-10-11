@@ -66,10 +66,15 @@ class TaskLifecycleTest {
         var p=Profile.validate(Json.object("nickname","超时测试")); var u=db.createUser(p);
         var delivery=new DeliveryService(settings,db,(b,profile)->{});
         var tasks=new TaskService(settings,db,delivery,profile->(m,t,d)->{Thread.sleep(4000); return Json.object("role","assistant","content","late");});
-        try { var rid=tasks.submit(u.path("id").asText(),p,"manual",null); waitUntil(()->db.one("SELECT status FROM runs WHERE id=?",rid).path("status").asText().equals("failed")); assertTrue(db.history(u.path("id").asText(),30).isEmpty()); }
+        try { var rid=tasks.submit(u.path("id").asText(),p,"manual",null); waitUntil(()->db.one("SELECT status FROM runs WHERE id=?",rid).path("status").asText().equals("failed")); waitUntil(()->!db.all("SELECT id FROM events WHERE run_id=? AND kind='error'",rid).isEmpty());assertEquals("DEADLINE_EXCEEDED",db.one("SELECT error_code FROM events WHERE run_id=? AND kind='error' ORDER BY seq DESC LIMIT 1",rid).path("error_code").asText());assertTrue(db.history(u.path("id").asText(),30).isEmpty()); }
         finally { tasks.close(); delivery.close(); }
         var live=new Settings(Map.of("DATA_DIR",dir.toString(),"DEMO_MODE","false"));
         try(varHarness harness=new varHarness(live,db,(b,profile)->{})) { assertEquals(503,assertThrows(ApiException.class,()->harness.tasks.submit(u.path("id").asText(),p,"manual",null)).status); }
+    }
+    @Test void cancellingWaitingModelKeepsUserReasonAndImmediateTerminalAudit()throws Exception {
+        var settings=new Settings(Map.of("DATA_DIR",dir.toString()));var db=new Database(dir);var profile=Profile.validate(Json.object("nickname","cancel model","enabled",false));var user=db.createUser(profile);var delivery=new DeliveryService(settings,db,(b,p)->{});CountDownLatch entered=new CountDownLatch(1);
+        var tasks=new TaskService(settings,db,delivery,p->(m,t,d)->{entered.countDown();Thread.sleep(10000);return Json.object("role","assistant","content","late");});
+        try{String rid=tasks.submit(user.path("id").asText(),profile,"manual",null);assertTrue(entered.await(5,TimeUnit.SECONDS));tasks.cancel(user.path("id").asText(),rid);assertEquals("USER_CANCELLED",db.one("SELECT error_code FROM runs WHERE id=?",rid).path("error_code").asText());assertEquals(1,db.all("SELECT id FROM events WHERE run_id=? AND kind='terminal' AND status='cancelled'",rid).size());waitUntil(()->!db.all("SELECT id FROM events WHERE run_id=? AND kind='error'",rid).isEmpty());assertEquals("USER_CANCELLED",db.one("SELECT error_code FROM events WHERE run_id=? AND kind='error' ORDER BY seq DESC LIMIT 1",rid).path("error_code").asText());assertTrue(db.history(user.path("id").asText(),30).isEmpty());}finally{tasks.close();delivery.close();}
     }
     @Test void mailFailureKeepsBriefAndRetryIsClaimedOnce() throws Exception {
         var settings=new Settings(Map.of("DATA_DIR",dir.toString(),"DEMO_MODE","false","DEEPSEEK_API_KEY","fixture-key","DELIVERY_RETRY_COOLDOWN","0")); var db=new Database(dir);

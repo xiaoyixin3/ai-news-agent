@@ -35,10 +35,10 @@ public class TaskService {
             db.execute("UPDATE runs SET phase='COMMITTING' WHERE id=? AND status='running'",rid);db.finish(rid,result);delivery.wake();
             db.event(rid,"terminal",Json.object("status","succeeded","message","简报已提交"));
         }catch(Exception e){String code=e instanceof AgentFailure a?a.code:"RUN_FAILED";String error=settings.redact(NewsClient.clip(e.getMessage(),512));db.execute("UPDATE runs SET status='failed',phase=NULL,finished_at=?,error_code=?,error=? WHERE id=? AND status IN ('queued','running')",Database.now(),code,error,rid);
-            try{db.event(rid,"error",Json.object("message",error,"error_code",code));}catch(RuntimeException ignored){}
+            try{var terminal=db.one("SELECT status,error_code,error FROM runs WHERE id=?",rid);if(terminal!=null&&!terminal.path("status").asText().equals("succeeded"))db.event(rid,"error",Json.object("status",terminal.path("status"),"message",terminal.path("error"),"error_code",terminal.path("error_code")));}catch(RuntimeException ignored){}
         }finally{if(timeout!=null)timeout.cancel(false);workers.remove(rid);Thread.interrupted();}
     }
-    public void cancel(String uid,String rid){if(db.one("SELECT id FROM runs WHERE id=? AND subscription_id=?",rid,uid)==null)throw new ApiException(404,"任务不存在");if(db.execute("UPDATE runs SET status='cancelled',phase=NULL,finished_at=?,error_code='USER_CANCELLED',error='用户取消' WHERE id=? AND subscription_id=? AND status IN ('queued','running')",Database.now(),rid,uid)!=1)throw new ApiException(409,"任务已进入终态");Thread t=workers.get(rid);if(t!=null)t.interrupt();}
+    public void cancel(String uid,String rid){if(db.one("SELECT id FROM runs WHERE id=? AND subscription_id=?",rid,uid)==null)throw new ApiException(404,"任务不存在");if(db.execute("UPDATE runs SET status='cancelled',phase=NULL,finished_at=?,error_code='USER_CANCELLED',error='用户取消' WHERE id=? AND subscription_id=? AND status IN ('queued','running')",Database.now(),rid,uid)!=1)throw new ApiException(409,"任务已进入终态");Thread t=workers.get(rid);if(t!=null)t.interrupt();db.event(rid,"terminal",Json.object("status","cancelled","error_code","USER_CANCELLED","message","用户取消"));}
     public int availableCapacity(){return Math.max(0,34-db.one("SELECT COUNT(*) n FROM runs WHERE status IN ('queued','running')").path("n").asInt());}
     @PreDestroy public void close(){executor.shutdownNow();watchdog.shutdownNow();try{executor.awaitTermination(5,TimeUnit.SECONDS);}catch(InterruptedException e){Thread.currentThread().interrupt();}}
 }

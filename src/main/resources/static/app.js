@@ -17,7 +17,7 @@ form.addEventListener('submit',async event=>{
   try{const existing=hasSubscription();const result=await api(existing?'/me':'/subscriptions',{method:existing?'PUT':'POST',body:JSON.stringify(readProfile())});if(result.token)saveToken(result.token);fill(result.profile);message('偏好已保存。可以生成简报，也会按设定时间自动生成。');await refresh()}
   catch(error){errorMessage(error)}finally{save.disabled=false;save.textContent='保存偏好'}
 });
-async function loadEvents(id,host){try{renderEvents(host,await api(`/runs/${id}/events`))}catch(error){host.replaceChildren(element('p',error.message,'run-error'))}}
+async function loadEvents(id,host,status){try{renderEvents(host,await api(`/runs/${id}/events`),status)}catch(error){host.replaceChildren(element('p',error.message,'run-error'))}}
 async function retry(id,button,uncertain=false){if(uncertain&&!confirm('邮件可能已经送达。重新发送可能重复，确认仍要重试吗？'))return;button.disabled=true;try{await api(`/briefs/${id}/retry-delivery${uncertain?'?confirmDuplicateRisk=true':''}`,{method:'POST'});message('邮件重试已登记。');await refresh();startPolling()}catch(error){errorMessage(error);button.disabled=false}}
 async function cancelDelivery(id){try{await api(`/briefs/${id}/cancel-delivery`,{method:'POST'});message('邮件投递已取消，站内简报保留。');await refresh()}catch(error){errorMessage(error)}}
 async function deleteBrief(id){if(!confirm('删除这份简报及其邮件记录？'))return;try{await api(`/briefs/${id}`,{method:'DELETE'});selected='';await refresh();message('简报已删除。')}catch(error){errorMessage(error)}}
@@ -30,6 +30,7 @@ async function refresh(){
     document.querySelector('#delete-subscription').hidden=false;
     const [briefs,runs,stats]=await Promise.all([api(`/briefs?page=${page}&limit=10&mode=${historyMode.value}`),api('/runs'),api(`/metrics?mode=${historyMode.value}`)]);
     const percent=value=>value===null?'暂无统计':`${Math.round(value*100)}%`;const statsHost=document.querySelector('#metrics-content');statsHost.replaceChildren(element('p',`生成成功率 ${percent(stats.success_rate)} · 工具成功率 ${percent(stats.tool_success_rate)} · 邮件成功率 ${percent(stats.delivery_success_rate)}`),element('p',`生成耗时中位数 ${stats.latency_p50_ms===null?'暂无统计':stats.latency_p50_ms+' ms'} · 已知模型用量 ${stats.runs.input_tokens+stats.runs.output_tokens} · 未知用量请求 ${stats.runs.unknown_usage} 次`),element('p',stats.quality_note));
+    statsHost.append(element('p',`已完成工具 ${stats.tools.attempts} 次 · 执行中止 ${stats.tools.interrupted||0} 次 · 未执行 ${stats.tools.not_executed||0} 次；工具成功率只统计已完成尝试。`));
     const active=runs.find(run=>['queued','running'].includes(run.status));
     const finished=activeRun&&!active?runs.find(run=>run.id===activeRun):null;
     if(finished?.status==='succeeded'&&finished.mode===historyMode.value){
