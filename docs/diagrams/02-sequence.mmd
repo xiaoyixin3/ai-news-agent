@@ -24,8 +24,10 @@ sequenceDiagram
   C->>D: 同事务保存简报 成功状态 可选投递
   D-->>C: COMMIT
   C-->>A: SUCCEEDED
-  E->>D: 条件领取 PENDING
-  Note over D,E: 提交领取状态后再访问 SMTP
-  E->>E: 固定收件人邮件发送
-  E->>D: SENT 或 FAILED 或 UNKNOWN
+  opt 已选择邮件且 SMTP 就绪
+    E->>D: 条件领取 PENDING
+    Note over D,E: 提交领取状态后再访问 SMTP
+    E->>E: 固定收件人邮件发送
+    E->>D: SENT 或 FAILED 或 UNKNOWN
+  end
   Note over A,D: 超时 截断 无候选或预算耗尽均失败

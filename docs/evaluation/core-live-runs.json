@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-11",
+  "code_contract": "news-1.1.2",
+  "runs": [
+    {
+      "date": "2026-10-11T04:01:38.861Z",
+      "role": "Java developer",
+      "trigger": "scheduled",
+      "schedule_date": "2026-10-11",
+      "run_id": "52ad717929344aa88946edb0d4820f3f",
+      "status": "succeeded",
+      "items": 2,
+      "model_rounds": 12,
+      "tool_calls": 21,
+      "input_tokens": 55705,
+      "output_tokens": 1759,
+      "tool_order": [
+        "list_dir",
+        "read_file",
+        "read_file",
+        "get_history",
+        "fetch_rss",
+        "search_news",
+        "search_news",
+        "fetch_rss",
+        "search_news",
+        "fetch_article",
+        "read_file",
+        "fetch_article",
+        "read_file",
+        "search_news",
+        "search_news",
+        "fetch_article",
+        "fetch_article",
+        "fetch_article",
+        "fetch_article",
+        "fetch_article",
+        "publish_brief"
+      ],
+      "tool_failures": 7,
+      "finish_reason": "stop",
+      "request_response_pairs": 12,
+      "source_evidence": [
+        {
+          "title": "MCP for agent-to-agent comms may be the riskiest protocol you've never heard of",
+          "url": "https://arstechnica.com/security/2026/10/vulnerability-in-agents-from-google-and-others-exposes-structural-flaw-in-mcp/",
+          "evidence_scope": "extracted_body",
+          "summary_length": 317
+        },
+        {
+          "title": "OpenAI agents tried to hack Wikipedia tools and flooded it with traffic",
+          "url": "https://arstechnica.com/security/2026/10/openai-agents-tried-to-hack-wikipedia-tools-and-flooded-it-with-traffic/",
+          "evidence_scope": "extracted_body",
+          "summary_length": 207
+        }
+      ],
+      "notice": "收到 1 份新简报，已自动更新收件箱。",
+      "manual_generation_requests": 0,
+      "browser": "Playwright Chromium",
+      "fallback": "Browser plugin not available",
+      "url": "http://127.0.0.1:8080/",
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "protocol_trace_visible": true,
+      "smtp_hint": true,
+      "mobile_overflow": false,
+      "refresh_persistence": true,
+      "console_errors": []
+    },
+    {
+      "role": "AI researcher",
+      "run_id": "3f55ad91d4c54b359357905276db59df",
+      "status": "succeeded",
+      "trigger": "manual",
+      "items": 2,
+      "model_rounds": 9,
+      "tool_calls": 15,
+      "input_tokens": 48099,
+      "output_tokens": 1890,
+      "tool_order": [
+        "list_dir",
+        "get_history",
+        "read_file",
+        "read_file",
+        "fetch_rss",
+        "search_news",
+        "search_news",
+        "read_file",
+        "fetch_article",
+        "fetch_article",
+        "read_file",
+        "fetch_article",
+        "fetch_article",
+        "write_file",
+        "publish_brief"
+      ],
+      "tool_failures": 1,
+      "finish_reason": "stop",
+      "request_response_pairs": 9,
+      "source_evidence": [
+        {
+          "title": "Multimodal open d1 decision models for the edge",
+          "url": "https://huggingface.co/blog/LiquidAI/open-d1",
+          "evidence_scope": "extracted_body",
+          "summary_length": 234
+        },
+        {
+          "title": "Impactful scheduling for GPU clusters",
+          "url": "https://huggingface.co/blog/allenai/impactful-scheduling",
+          "evidence_scope": "extracted_body",
+          "summary_length": 189
+        }
+      ]
+    }
+  ],
+  "note": "实际 DeepSeek 与实际新闻源。定时测试无手动生成；研究员为手动对照。报告不含密钥、令牌、个人数据库或抓取全文；测试订阅已关闭每日自动执行。"
+}

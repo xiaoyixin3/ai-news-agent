@@ -28,6 +28,8 @@ $env:LLM_MODEL = 'deepseek-flash'
 
 每轮发送消息与 10 个工具，由模型返回 `tool_calls` 决定调用顺序和次数；服务执行后回传对应 `tool_call_id`，没有固定搜索、摘要、发布流水线。`publish_brief` 只接受候选，模型正常结束、最终校验和提交事务都通过后才正式保存。后续无效候选不会抹掉已接受候选；取消、超时或达到上限不会保存候选。
 
+每轮模型请求保留关联 ID、配置版本、消息/工具 schema 哈希和有界工具请求摘要，响应保存供应商 `finish_reason` 与响应 ID。演示结束字段明确标为脚本信号，不作为真实模型证据。完整核心验收见 [2026-10-11 修订交付](docs/core-acceptance.md)。
+
 ## 工具与权限
 
 | 工具 | 行为与边界 |
@@ -36,12 +38,14 @@ $env:LLM_MODEL = 'deepseek-flash'
 | read_file | 分段读取，单次最多 8000 字；支持 offset/max_chars |
 | search_content | 搜索正文、历史、笔记和草稿，最多 20 条 |
 | write_file | 仅写 notes/ 和 drafts/，单文件最多 64 KiB |
-| bash | Java 只读虚拟适配，只接受 pwd/ls；不创建 Shell 子进程 |
+| bash | 真实 Windows PowerShell / Linux Bash 固定脚本，只接受精确 pwd/ls；5 秒、输出合计 16 KiB，受控进程树 |
 | fetch_rss | 白名单 RSS、固定新闻时间窗口 |
 | search_news | 模型自主构造 Google News RSS 查询，可换词或多次搜索 |
 | fetch_article | 仅本次 source_id，可缓存只读正文；返回短摘录与分段读取路径 |
 | get_history | 当前订阅同模式最近 30 份来源索引；短预览与 history/index.json |
 | publish_brief | 校验并接受候选，不能直接修改邮件或运行状态 |
+
+`bash` 的命令不拼入脚本。子进程在纳入 Windows Job Object / Linux 进程组前等待受控启动门；清空继承环境，不传入模型/SMTP 密钥，关闭 stdin 后执行。stdout/stderr 并发限量读取；超时、取消、超限、父进程结束及应用退出均回收进程树。返回真实 PID、退出码、耗时与输出；宿主工作区路径脱敏为 `/workspace`。这是受限命令执行，不是完整 OS 沙箱。Linux 需要 `/usr/bin/setsid`；本轮真实进程验收平台为 Windows。
 
 context.json、preferences.json、sources.json、feeds.json、历史和正文均只读。模型看不到收件邮箱或服务密钥。绝对路径、UNC、`..`、符号链接与 Windows junction 越界被拒绝。资料中的指令没有执行授权。
 
@@ -67,7 +71,9 @@ context.json、preferences.json、sources.json、feeds.json、历史和正文均
 
 设置时间、时区并开启每日自动简报。服务每 20 秒扫描；当天到时只领取一次，晚启动补领当天，不补所有过去日期。夏令时缺失时刻向后平移，重复时刻选择第一次；日期键避免二次领取。关闭服务或电脑休眠时不会运行。
 
-站内渠道直接保存。邮件在本地配置 SMTP_HOST、SMTP_PORT、SMTP_TLS、SMTP_USER、SMTP_PASSWORD、SMTP_FROM，再在页面选择邮件与收件人。TLS 支持 starttls/ssl，端口按服务商设置。
+页面在已保存订阅后每 30 秒检查当前模式收件箱，有新简报即提示并更新第一页；活动任务另以 2 秒查询，结束不会关闭收件箱检查。页面关闭不影响服务端调度，再打开可查看历史；电脑和服务必须保持可用。
+
+站内渠道直接保存。邮件在本地配置 SMTP_HOST、SMTP_PORT、SMTP_TLS、SMTP_USER、SMTP_PASSWORD、SMTP_FROM，再在页面选择邮件与收件人。真实模式 SMTP 未就绪时，页面提前提示且服务端拒绝保存 EMAIL 偏好，站内订阅仍可使用。TLS 支持 starttls/ssl，端口按服务商设置。
 
 简报、运行成功状态与邮件 pending 记录在同一个事务中保存。独立投递器每 5 秒扫描，生成线程不等待 SMTP；提交后即使丢失通知，也能再次扫描。收件人冻结为任务创建时的邮箱，更改偏好不改已有投递。
 
@@ -81,7 +87,7 @@ context.json、preferences.json、sources.json、feeds.json、历史和正文均
 
 旧事件原始 payload 可能带邮箱，保存在升级前备份中隔离；新库保留事件序号、摘要和省略标识，不把未审查旧详情直接公开。旧 sending 转 unknown。迁移失败应保留整个数据目录，查看异常；回滚到 v1.0 需先停服务，用原 v1.0 包和升级前库在**独立新数据目录**启动，不能让旧代码写 v1.1 库。升级备份不是日常备份的替代品，旧工作区和审计文件应随升级前数据目录一起保留。
 
-兼容实现沿用小写 API 状态、ISO UTC 历史时间；deadline/window/next_attempt 等显式 `_ms` 字段使用 UTC 毫秒。模块按原工程扩展，文件名与设计样例不逐字对应，核心约束见[交付对照](acceptance-v1.1.md)。docs/schema/001_initial.sql 是设计样例，**不能覆盖生产 migration**。
+兼容实现沿用小写 API 状态、ISO UTC 历史时间；deadline/window/next_attempt 等显式 `_ms` 字段使用 UTC 毫秒。模块按原工程扩展，文件名与设计样例不逐字对应，核心约束见[交付对照](docs/acceptance-v1.1.md)。docs/schema/001_initial.sql 是设计样例，**不能覆盖生产 migration**。
 
 后台每 10 分钟清理：终态工作区 7 天、详细审计 30 天、运行及事件摘要 90 天、简报与投递 180 天。活动任务跳过；简报保留期间保留 run 外壳与重试祖先；不确定邮件不被自动删除。外置详情缺失显示 MISSING，到期显示 EXPIRED；孤儿对象宽限 24 小时。删除简报或订阅经过归属验证与引用顺序控制，发送中/unknown 会阻止删除。删除订阅会使旧浏览器令牌失效。
 
@@ -102,12 +108,12 @@ java -jar target/ai-news-agent.jar --maintenance=restore --source=C:/backups/ai-
 git log --oneline
 ```
 
-当前本地 83 个自动化用例通过，包括实际 HTTP/TLS 测试服务器上的 DNS 绑定、无效证书握手拒绝、压缩炸弹、重定向、预算、中断批次审计、取消/提交、迁移回滚、归属隔离、可靠投递、保留与恢复。离线评估有 9 组策略标注，另提供 Java 逐项事实复算工具；刻意区分权限/来源校验与人工事实/语义评价，见[评估说明](evaluation.md)。
+当前本地 83 个自动化用例通过，包括实际 HTTP/TLS 测试服务器上的 DNS 绑定、无效证书握手拒绝、压缩炸弹、重定向、预算、中断批次审计、取消/提交、迁移回滚、归属隔离、可靠投递、保留与恢复。离线评估有 9 组策略标注，另提供 Java 逐项事实复算工具；刻意区分权限/来源校验与人工事实/语义评价，见[评估说明](docs/evaluation.md)。
 
-桌面与手机浏览器流程见[验收记录](acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](live-acceptance.md)。SMTP 未配置，真实邮件接收仍待联调。单次成功不代表长期可靠性或摘要事实已全部核验。运行统计的事实支持率和语义重复率为空，不生成虚假分数。
+桌面与手机浏览器流程见[验收记录](docs/acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](docs/live-acceptance.md)。SMTP 未配置，真实邮件接收仍待联调。单次成功不代表长期可靠性或摘要事实已全部核验。运行统计的事实支持率和语义重复率为空，不生成虚假分数。
 
-2026-10-11 又完成 AI 产品经理和 AI 研究员两种身份的真实生成，保留研究员一次预算失败及 retry_of 重试记录。三个身份的 7 条新闻抽选 14 项陈述，辅助对照支持 12 项、不支持 2 项，不能冒充独立人工准确率；明确记录来源混入和时间表述偏差。详见[补齐记录](quality-followup.md)与[脱敏标注](evaluation/real-sample-report.json)。跨日持续观察、长期存储压力和独立人审仍待执行。
+2026-10-11 又完成 AI 产品经理和 AI 研究员两种身份的真实生成，保留研究员一次预算失败及 retry_of 重试记录。三个身份的 7 条新闻抽选 14 项陈述，辅助对照支持 12 项、不支持 2 项，不能冒充独立人工准确率；明确记录来源混入和时间表述偏差。详见[补齐记录](docs/quality-followup.md)与[脱敏标注](docs/evaluation/real-sample-report.json)。跨日持续观察、长期存储压力和独立人审仍待执行。
 
-设计基线：[架构 v1.1](architecture-v1.1.md)、[工程方案](engineering-plan-v1.1.md)、[四张设计图](diagrams.html)。v1.0 历史文档保留用于追踪，不代表当前功能状态。交付仓库含分批真实 Git 提交；不修改作者日期，也不伪造开发历史。
+设计基线：[架构 v1.1](docs/architecture-v1.1.md)、[工程方案](docs/engineering-plan-v1.1.md)、[四张设计图](docs/diagrams.html)。v1.0 历史文档保留用于追踪，不代表当前功能状态。交付仓库含分批真实 Git 提交；不修改作者日期，也不伪造开发历史。
 
 常见问题：端口冲突设 PORT=8081；首建下载失败检查 Maven Central 网络，交付包有 JAR 可直接运行；真实生成失败检查运行记录、密钥、模型名和来源网络；空简报查看排除词与窗口，不为凑数编造条目。

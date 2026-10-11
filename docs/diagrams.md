@@ -2,16 +2,18 @@
 
 四图对应架构 v1.1。图形预览见 `diagrams.html`，可编辑 Mermaid 源码在 `diagrams/`。连线表示职责与数据联系，不规定新闻工具的调用顺序。
 
+2026-10-11 修订：每日任务自动生成并投递站内；邮件可选；bash 必须实际启动 shell。图中常驻扫描器是首版部署选择，截图不要求同时支持所有定时运行方式。
+
 ## 1 总体架构
 
-模型经工具执行层访问业务能力；权限、预算和提交由服务端控制。SQLite 同时保存业务状态和待投递记录，首版不依赖独立消息队列。
+模型经工具执行层访问业务能力；权限、预算和提交由服务端控制。bash 通过受限真实 shell 执行固定脚本。SQLite 保存简报和可选邮件记录，首版不依赖独立消息队列。
 
 ```mermaid
 flowchart TB
   UI[中文页面] --> API[HTTP API 与令牌认证]
   API --> SUB[订阅与偏好]
   API --> RUN[任务服务]
-  SCH[时区调度器] --> RUN
+  SCH[每日自动时区调度] --> RUN
   RUN --> WORK[有界任务线程池]
   WORK --> AGENT[AgentRunner 与预算]
   AGENT <--> LLM[DeepSeek 模型适配器]
@@ -19,6 +21,7 @@ flowchart TB
   GATE --> TOOLS[十个受控工具]
   TOOLS --> NEWS[来源注册与安全 HTTP]
   TOOLS --> WS[本次工作区]
+  TOOLS --> SHELL[受限真实 shell 与进程监管]
   TOOLS --> CAND[候选提交与校验]
   AGENT --> COMMIT[正常结束后复检并提交]
   CAND --> COMMIT
@@ -28,7 +31,7 @@ flowchart TB
   AGENT --> TRACE[有界事件与脱敏详情]
   TRACE --> DB
   TRACE --> OBJ[外置审计对象]
-  DB --> DELIVERY[独立邮件投递器]
+  DB --> DELIVERY[可选邮件投递器]
   DELIVERY --> SMTP[SMTP]
   NEWS --> PUBLIC[允许的公网新闻来源]
 ```
@@ -64,10 +67,12 @@ sequenceDiagram
   C->>D: 同事务保存简报 成功状态 可选投递
   D-->>C: COMMIT
   C-->>A: SUCCEEDED
-  E->>D: 条件领取 PENDING
-  Note over D,E: 提交领取状态后再访问 SMTP
-  E->>E: 固定收件人邮件发送
-  E->>D: SENT 或 FAILED 或 UNKNOWN
+  opt 已选择邮件且 SMTP 就绪
+    E->>D: 条件领取 PENDING
+    Note over D,E: 提交领取状态后再访问 SMTP
+    E->>E: 固定收件人邮件发送
+    E->>D: SENT 或 FAILED 或 UNKNOWN
+  end
   Note over A,D: 超时 截断 无候选或预算耗尽均失败
 ```
 

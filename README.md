@@ -28,6 +28,8 @@ $env:LLM_MODEL = 'deepseek-flash'
 
 每轮发送消息与 10 个工具，由模型返回 `tool_calls` 决定调用顺序和次数；服务执行后回传对应 `tool_call_id`，没有固定搜索、摘要、发布流水线。`publish_brief` 只接受候选，模型正常结束、最终校验和提交事务都通过后才正式保存。后续无效候选不会抹掉已接受候选；取消、超时或达到上限不会保存候选。
 
+每轮模型请求保留关联 ID、配置版本、消息/工具 schema 哈希和有界工具请求摘要，响应保存供应商 `finish_reason` 与响应 ID。演示结束字段明确标为脚本信号，不作为真实模型证据。完整核心验收见 [2026-10-11 修订交付](docs/core-acceptance.md)。
+
 ## 工具与权限
 
 | 工具 | 行为与边界 |
@@ -36,12 +38,14 @@ $env:LLM_MODEL = 'deepseek-flash'
 | read_file | 分段读取，单次最多 8000 字；支持 offset/max_chars |
 | search_content | 搜索正文、历史、笔记和草稿，最多 20 条 |
 | write_file | 仅写 notes/ 和 drafts/，单文件最多 64 KiB |
-| bash | Java 只读虚拟适配，只接受 pwd/ls；不创建 Shell 子进程 |
+| bash | 真实 Windows PowerShell / Linux Bash 固定脚本，只接受精确 pwd/ls；5 秒、输出合计 16 KiB，受控进程树 |
 | fetch_rss | 白名单 RSS、固定新闻时间窗口 |
 | search_news | 模型自主构造 Google News RSS 查询，可换词或多次搜索 |
 | fetch_article | 仅本次 source_id，可缓存只读正文；返回短摘录与分段读取路径 |
 | get_history | 当前订阅同模式最近 30 份来源索引；短预览与 history/index.json |
 | publish_brief | 校验并接受候选，不能直接修改邮件或运行状态 |
+
+`bash` 的命令不拼入脚本。子进程在纳入 Windows Job Object / Linux 进程组前等待受控启动门；清空继承环境，不传入模型/SMTP 密钥，关闭 stdin 后执行。stdout/stderr 并发限量读取；超时、取消、超限、父进程结束及应用退出均回收进程树。返回真实 PID、退出码、耗时与输出；宿主工作区路径脱敏为 `/workspace`。这是受限命令执行，不是完整 OS 沙箱。Linux 需要 `/usr/bin/setsid`；本轮真实进程验收平台为 Windows。
 
 context.json、preferences.json、sources.json、feeds.json、历史和正文均只读。模型看不到收件邮箱或服务密钥。绝对路径、UNC、`..`、符号链接与 Windows junction 越界被拒绝。资料中的指令没有执行授权。
 
@@ -67,7 +71,9 @@ context.json、preferences.json、sources.json、feeds.json、历史和正文均
 
 设置时间、时区并开启每日自动简报。服务每 20 秒扫描；当天到时只领取一次，晚启动补领当天，不补所有过去日期。夏令时缺失时刻向后平移，重复时刻选择第一次；日期键避免二次领取。关闭服务或电脑休眠时不会运行。
 
-站内渠道直接保存。邮件在本地配置 SMTP_HOST、SMTP_PORT、SMTP_TLS、SMTP_USER、SMTP_PASSWORD、SMTP_FROM，再在页面选择邮件与收件人。TLS 支持 starttls/ssl，端口按服务商设置。
+页面在已保存订阅后每 30 秒检查当前模式收件箱，有新简报即提示并更新第一页；活动任务另以 2 秒查询，结束不会关闭收件箱检查。页面关闭不影响服务端调度，再打开可查看历史；电脑和服务必须保持可用。
+
+站内渠道直接保存。邮件在本地配置 SMTP_HOST、SMTP_PORT、SMTP_TLS、SMTP_USER、SMTP_PASSWORD、SMTP_FROM，再在页面选择邮件与收件人。真实模式 SMTP 未就绪时，页面提前提示且服务端拒绝保存 EMAIL 偏好，站内订阅仍可使用。TLS 支持 starttls/ssl，端口按服务商设置。
 
 简报、运行成功状态与邮件 pending 记录在同一个事务中保存。独立投递器每 5 秒扫描，生成线程不等待 SMTP；提交后即使丢失通知，也能再次扫描。收件人冻结为任务创建时的邮箱，更改偏好不改已有投递。
 
