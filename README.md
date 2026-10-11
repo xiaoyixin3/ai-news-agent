@@ -114,11 +114,13 @@ git log --oneline
 
 桌面与手机浏览器流程见[验收记录](docs/acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](docs/live-acceptance.md)。该历史联调当时未配置 SMTP；2026-10-11 已完成 QQ 邮箱真实投递且用户确认收件，见[QQ 邮件验收](docs/qq-mail-acceptance.md)。单次成功不代表长期可靠性或摘要事实已全部核验。运行统计的事实支持率和语义重复率为空，不生成虚假分数。
 
-2026-10-11 又完成 AI 产品经理和 AI 研究员两种身份的真实生成，保留研究员一次预算失败及 retry_of 重试记录。三个身份的 7 条新闻抽选 14 项陈述，辅助对照支持 12 项、不支持 2 项，不能冒充独立人工准确率；明确记录来源混入和时间表述偏差。详见[补齐记录](docs/quality-followup.md)与[脱敏标注](docs/evaluation/real-sample-report.json)。跨日持续观察、长期存储压力和独立人审仍待执行。
+2026-10-11 又完成 AI 产品经理和 AI 研究员两种身份的真实生成，保留研究员一次预算失败及 retry_of 重试记录。三个身份的 7 条新闻抽选 14 项陈述，辅助对照支持 12 项、不支持 2 项，不能冒充独立人工准确率；明确记录来源混入和时间表述偏差。详见[补齐记录](docs/quality-followup.md)与[脱敏标注](docs/evaluation/real-sample-report.json)。这部分是早期辅助复核记录；后续人工标注指标已另行发布。跨日持续观察与长期存储压力仍待执行。
 
 设计基线：[架构 v1.1](docs/architecture-v1.1.md)、[工程方案](docs/engineering-plan-v1.1.md)、[四张设计图](docs/diagrams.html)。v1.0 历史文档保留用于追踪，不代表当前功能状态。交付仓库含分批真实 Git 提交；不修改作者日期，也不伪造开发历史。
 
 常见问题：端口冲突设 PORT=8081；首建下载失败检查 Maven Central 网络，交付包有 JAR 可直接运行；真实生成失败检查运行记录、密钥、模型名和来源网络；空简报查看排除词与窗口，不为凑数编造条目。
 
 
-2026-10-11 已扩大来源复核至全部 6 份真实简报、12 条新闻、77 项主要陈述，并提供可导出标签的[人工核验表](docs/evaluation/human-review.html)与[CSV 空模板](docs/evaluation/human-review-template.csv)。辅助来源支持为 72/77，真正人审仍待独立填写，不作为总体准确率，也不回填站内人审指标。完整问题和范围见[扩大核验记录](docs/quality-expanded.md)。
+2026-10-11 已扩大来源复核至全部 6 份真实简报、12 条新闻、77 项主要陈述，并提供可导出标签的[人工核验表](docs/evaluation/human-review.html)与[CSV 空模板](docs/evaluation/human-review-template.csv)。来源辅助复核阶段记录见[扩大核验记录](docs/quality-expanded.md)。
+
+用户完成并确认发布的人工标注共 77 项：72 项支持、4 项不支持、1 项不确定，**人工标注支持比例为 72/77（93.5%）**，本轮选定陈述标注覆盖率为 100%。详见[人工标注指标](docs/human-quality-acceptance.md)与[逐项标签](docs/evaluation/human-annotation-result.json)。这是离线样本标注统计，与站内按订阅统计的运行指标分别列示。

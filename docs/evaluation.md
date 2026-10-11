@@ -34,9 +34,15 @@ java '-Dloader.main=cn.zaozhi.evaluation.QualityEvaluation' -cp target/ai-news-a
 
 bundle.runs 每项包含 run_id、role、brief.items 和 evidence；items 包含 source_id、evidence_scope；evidence 以 source_id 为键，包含 text、scope 和 text 的 SHA-256。labels.reviewer 指明 kind/name；reviews 对每项 run_id/source_id 包含 event_id、facts 数组，每个 fact 为 claim/verdict/quote。有支持标签须提供当前来源中的非空 quote。未审事实可留空，指标不会自动补为 100%。
 
-QQ 受控邮箱接收已完成，用户确认“已收到，内容正常”，见 [邮件验收](qq-mail-acceptance.md)。后续仍需独立人审、扩大跨日期样本及邮件供应商断线/重启联调。凭据只留本地环境变量，不写报告、录屏或 Git。
+QQ 受控邮箱接收已完成，用户确认“已收到，内容正常”，见 [邮件验收](qq-mail-acceptance.md)。人工标注指标已另行发布；后续仍需扩大跨日期样本及邮件供应商断线/重启联调。凭据只留本地环境变量，不写报告、录屏或 Git。
 
 
 ## 扩大核验与人工模板 · 2026-10-11
 
-全量纳入当前 6 份真实简报的 12 条新闻，逐项复核 77 项主要陈述：辅助支持 72 项、不支持 4 项、不确定 1 项。独立人工指标仍为空；与原 14 项抽检口径不同，不将比例变化说成模型质量提升。详细问题、公开哈希记录和可分批完成的空白人审表见 [扩大核验记录](quality-expanded.md)。原私有来源快照保留供评分器复算，抓取全文、地址与凭据均不公开。
+全量纳入当前 6 份真实简报的 12 条新闻，逐项复核 77 项主要陈述：辅助支持 72 项、不支持 4 项、不确定 1 项。这是来源辅助复核阶段的结果；与原 14 项抽检口径不同，不将比例变化说成模型质量提升。详细问题、公开哈希记录和可分批完成的空白人审表见 [扩大核验记录](quality-expanded.md)。原私有来源快照保留供评分器复算，抓取全文、地址与凭据均不公开。
+
+## 人工标注指标发布 · 2026-10-11
+
+用户提交并确认发布 77 项人工判断：72 supported、4 unsupported、1 uncertain。人工标注支持比例（human_annotation_support_rate）为 **72/77 = 93.5%**，uncertain 纳入分母；本轮选定陈述的人工标注覆盖率为 **77/77 = 100%**。发布时间人工判断为 11 条正确、1 条有误，身份相关性人工判断为 12 条相关。
+
+该统计按用户提交标签汇总，公开每项 claim/verdict、输入标签与来源 bundle 哈希，不公开核验者身份、原文或私人备注。可直接对 [human-annotation-result.json](evaluation/human-annotation-result.json) 的 reviews[].facts 复算。详细记录见 [人工标注指标](human-quality-acceptance.md)。运行中的订阅指标与离线样本标注统计分别列示。
