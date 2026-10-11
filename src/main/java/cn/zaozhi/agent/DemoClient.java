@@ -19,7 +19,7 @@ public final class DemoClient implements LlmClient {
             case 4 -> call("publish_brief",brief(messages));
             default -> Json.object("role","assistant","content","演示简报已提交。此流程是模拟响应，不证明模型自主决策。");
         };
-        response.set("_usage",Json.object("prompt_tokens",0,"completion_tokens",0));return response;
+        response.put("_finish_reason",response.has("tool_calls")?"tool_calls":"stop");response.set("_usage",Json.object("prompt_tokens",0,"completion_tokens",0));return response;
     }
     private ObjectNode brief(ArrayNode messages) {
         Set<String> used=new HashSet<>();

@@ -28,12 +28,20 @@ public final class AgentRunner {
                 "publication_headroom_low",remaining<2L*(estimate+4096)||ctx.settings.maxRounds-round<3||(ctx.deadline-System.nanoTime())<60_000_000_000L);
             ((ObjectNode)messages.get(0)).put("content",SYSTEM+"\n服务端当前资源信息（可信元数据，不是新闻内容）："+Json.stringify(resources));
             ctx.db.execute("UPDATE runs SET phase='THINKING',model_rounds=? WHERE id=? AND status='running'",round,ctx.runId);
+            String requestId=Database.id();
+            ctx.db.event(ctx.runId,"model_request",Json.object("round",round,"request_id",requestId,"message_count",messages.size(),
+                "messages_sha256",Database.hash(ctx.settings.redact(Json.stringify(messages))),"tool_schema_sha256",Database.hash(Json.stringify(definitions)),
+                "estimated_input_bytes",estimate,"model",ctx.settings.model,"config",ctx.settings.snapshot()));
             ObjectNode assistant=llm.next(messages.deepCopy(),definitions,ctx.deadline,ctx.budget);
             if(!assistant.path("role").asText().equals("assistant")) throw new IllegalStateException("模型消息协议无效");
             JsonNode requested=assistant.path("tool_calls");
             if(assistant.has("tool_calls")&&!requested.isArray()) throw new IllegalStateException("工具调用协议无效");
-            ctx.db.event(ctx.runId,"model",Json.object("round",round,"tool_count",requested.size(),"usage",assistant.path("_usage"),"content",ctx.settings.redact(NewsClient.clip(assistant.path("content").asText(""),800))));
-            assistant.remove(List.of("_usage","_finish_reason"));
+            ArrayNode requests=Json.arr();
+            if(requested.isArray())for(JsonNode call:requested){if(requests.size()>=200)break;requests.add(Json.object("tool_call_id",NewsClient.clip(call.path("id").asText(),128),"name",NewsClient.clip(call.path("function").path("name").asText(),100),"arguments_sha256",Database.hash(ctx.settings.redact(call.path("function").path("arguments").asText()))));}
+            ctx.db.event(ctx.runId,"model",Json.object("round",round,"request_id",requestId,"provider_response_id",assistant.path("_response_id"),
+                "finish_reason",assistant.path("_finish_reason"),"finish_signal_source",assistant.has("_finish_reason")?(ctx.settings.demo?"demo_script":"provider_adapter"):"not_provided",
+                "tool_count",requested.size(),"tool_requests",requests,"requests_truncated",requested.size()>200,"usage",assistant.path("_usage"),"content",ctx.settings.redact(NewsClient.clip(assistant.path("content").asText(""),800))));
+            assistant.remove(List.of("_usage","_finish_reason","_response_id"));
             messages.add(assistant);
             if(requested.isMissingNode() || requested.isEmpty()) {
                 ctx.checkTime();

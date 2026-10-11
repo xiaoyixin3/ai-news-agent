@@ -55,7 +55,7 @@ public final class DeepSeekClient implements LlmClient {
             if((finish.equals("tool_calls")&&!hasCalls)||(finish.equals("stop")&&hasCalls)||(message.has("tool_calls")&&!calls.isArray()))throw new AgentFailure("INVALID_LLM_PROTOCOL","结束信号与工具请求不一致");
             ObjectNode clean=Json.object("role","assistant","content",message.path("content").isTextual()?message.path("content"):Json.tree(null));
             if(message.has("tool_calls")) clean.set("tool_calls",message.get("tool_calls"));
-            clean.put("_finish_reason",finish);clean.set("_usage",result.path("usage"));
+            clean.put("_finish_reason",finish);clean.put("_response_id",NewsClient.clip(result.path("id").asText(),200));clean.set("_usage",result.path("usage"));
             return clean;
         }
         throw new IllegalStateException("模型调用失败");

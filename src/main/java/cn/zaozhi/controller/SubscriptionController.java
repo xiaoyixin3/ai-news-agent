@@ -15,7 +15,7 @@ public class SubscriptionController {
     public SubscriptionController(SubscriptionService subscriptions, Settings settings) { this.subscriptions = subscriptions; this.settings = settings; }
     @GetMapping("/health") public ObjectNode health() {
         return Json.object("status", "ok", "mode", settings.mode(), "model", settings.model, "ready", settings.ready(), "scheduler", settings.scheduler,
-            "smtp_ready", !settings.get("SMTP_HOST", "").isBlank() && !settings.get("SMTP_FROM", "").isBlank());
+            "smtp_ready", settings.smtpReady());
     }
     @PostMapping("/subscriptions") public ResponseEntity<ObjectNode> create(@RequestBody JsonNode input) { return ResponseEntity.status(201).body(subscriptions.create(input)); }
     @GetMapping("/me") public ObjectNode me(@RequestHeader(value="Authorization", required=false) String token) {

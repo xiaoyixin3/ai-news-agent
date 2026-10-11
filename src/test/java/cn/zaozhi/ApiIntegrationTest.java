@@ -56,7 +56,10 @@ class ApiIntegrationTest {
         assertEquals(404,request("GET","/api/briefs/"+bid,other,null).statusCode());
         assertEquals(404,request("POST","/api/briefs/"+bid+"/retry-delivery",other,null).statusCode());
         assertEquals(400,request("GET","/api/briefs?page=0",token,null).statusCode());
-        assertEquals(10,Json.parse(request("GET","/api/runs/"+rid+"/events",token,null).body()).findValuesAsText("name").size());
+        var events=Json.parse(request("GET","/api/runs/"+rid+"/events",token,null).body());
+        int completedTools=0,modelRequests=0;boolean stopRecorded=false;
+        for(var event:events){if(event.path("kind").asText().equals("tool"))completedTools++;if(event.path("kind").asText().equals("model_request"))modelRequests++;if(event.path("kind").asText().equals("model")&&event.path("payload").path("finish_reason").asText().equals("stop"))stopRecorded=true;}
+        assertEquals(5,completedTools);assertEquals(6,modelRequests);assertTrue(stopRecorded);
         assertEquals(200,request("PUT","/api/me",token,Json.object("nickname","已修改","enabled",false)).statusCode());
         assertEquals("已修改",Json.parse(request("GET","/api/me",token,null).body()).path("profile").path("nickname").asText());
     }
