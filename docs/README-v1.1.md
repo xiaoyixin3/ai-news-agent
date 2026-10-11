@@ -2,13 +2,15 @@
 
 Java 17 + Spring Boot 3.5.16 + SQLite + DeepSeek Function Calling。填写身份与订阅偏好，生成中文简报、查看历史与工具轨迹，按每天的时间投递。v1.1 增加可靠邮件记录、取消与重试、运行预算、只读资料边界、来源持久化、清理与备份。
 
-## 5 分钟启动
+## 快速启动
 
-前置条件：Java 17 或更新版本。不需要另装 Maven、Node 或数据库。解压交付包，在项目目录双击 `start.cmd`；macOS / Linux 执行 `chmod +x mvnw start.sh && ./start.sh`。
+前置条件：源码构建使用 JDK 17 或更新版本；含 JAR 的预编译交付包仅需 Java 17 或更新运行环境。不需要另装 Maven、Node 或数据库。解压交付包，在项目目录双击 `start.cmd`；macOS / Linux 执行 `chmod +x mvnw start.sh && ./start.sh`。
 
 打开 <http://127.0.0.1:8080>，填写昵称、身份与关注话题，保存偏好，再点击“生成简报”。展开运行记录可查看工具调用。保持同一浏览器访问，订阅令牌保存在浏览器，数据库只保存令牌哈希；昵称不能用于找回订阅。
 
 交付 ZIP 包含 `.git` 和已构建的 `target/ai-news-agent.jar`，可直接启动。仅有源码时，启动脚本通过 Maven Wrapper 下载依赖并构建，耗时受网络影响。修改源码后运行 `.\start.cmd -Rebuild` 或 `./start.sh --rebuild`。
+
+2026-10-11 从公共 GitHub 仓库全新下载，并隔离空 Maven 缓存实测：首次下载、构建及启动约 7 分钟，程序初始化约 3 秒；页面保存、生成、工具轨迹、刷新和服务重新启动后的历史保留均通过。快速试用宜使用包含 JAR 的预编译包。详见[全新下载启动验收](docs/fresh-clone-acceptance.md)。
 
 默认是**显式离线演示**：合成新闻和脚本模型走同一个 Runtime，用于验证页面、存储与工具协议，不代表实时新闻或真实 LLM 自主决策。重复生成可能得到有原因说明的空简报。演示模式永不发送外部邮件，历史和统计按 demo/live 分开。
 
