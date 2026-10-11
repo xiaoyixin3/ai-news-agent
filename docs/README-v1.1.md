@@ -4,6 +4,8 @@ Java 17 + Spring Boot 3.5.16 + SQLite + DeepSeek Function Calling。填写身份
 
 ## 快速启动
 
+推荐直接下载 [v1.1.0 预编译包](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.0)，选择 `ai-news-agent-v1.1.0-precompiled.zip`，解压后双击 `start.cmd`。包内已含 JAR 和运行依赖；本机 Windows 已安装 Java 17 环境下，新目录启动实测约 6 秒。详见[预编译包使用与验收](docs/precompiled-release.md)。
+
 前置条件：源码构建使用 JDK 17 或更新版本；含 JAR 的预编译交付包仅需 Java 17 或更新运行环境。不需要另装 Maven、Node 或数据库。解压交付包，在项目目录双击 `start.cmd`；macOS / Linux 执行 `chmod +x mvnw start.sh && ./start.sh`。
 
 打开 <http://127.0.0.1:8080>，填写昵称、身份与关注话题，保存偏好，再点击“生成简报”。展开运行记录可查看工具调用。保持同一浏览器访问，订阅令牌保存在浏览器，数据库只保存令牌哈希；昵称不能用于找回订阅。

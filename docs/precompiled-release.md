@@ -1,0 +1,34 @@
+# 预编译下载包与启动验收
+
+日期：2026-10-11。公开下载入口：[GitHub Release v1.1.0](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.0)。
+
+## 下载与使用
+
+1. 安装 Java 17 或更新版本，确认终端中 `java -version` 可用。
+2. 在发布页面下载 `ai-news-agent-v1.1.0-precompiled.zip`，解压进入 `ai-news-agent`。
+3. Windows 双击 `start.cmd`；macOS / Linux 执行 `chmod +x start.sh mvnw && ./start.sh`。
+4. 打开 <http://127.0.0.1:8080>，保存订阅偏好，点击生成简报。
+
+包中已经包含全部运行依赖的 `target/ai-news-agent.jar`，首次启动不需要 Maven 下载与编译。默认以显式演示模式运行，使用合成新闻与脚本模型；无需密钥即可体验页面、工具记录和历史保存。使用真实 DeepSeek 时，将 `.env.example` 复制为 `.env`，在本地填写密钥并设置 `DEMO_MODE=false`；可选邮件配置见 [README](../README.md)。发布包不包含真实 `.env`、邮箱授权码、运行数据库、浏览器令牌或个人核验工作目录。
+
+包中保留源码、SQL migration、文档和完整 Git 提交历史。`PACKAGE-MANIFEST.json` 标明源码提交与 JAR SHA-256；发布页同时提供 `SHA256SUMS.txt`。源码 ZIP 与预编译 ZIP 不同，快速试用应选择带 `precompiled` 的资产。
+
+若本机已经在 8080 运行一个实例，先停止原实例，或在解压目录的本地 `.env` 中修改 `PORT`，例如 `PORT=8081`。双击启动后保留终端窗口；停止服务可以在窗口按 Ctrl+C。
+
+## Windows 实测
+
+将候选发布包解压到新的目录，未复制真实配置和已有数据库，隔离 Maven 缓存，执行包内原有的 `start.cmd`。本机已安装 Java 17.0.19。为避开正在使用的服务，仅将测试端口设为 8097。
+
+| 检查 | 结果 |
+|---|---|
+| 启动命令至健康接口就绪 | 5.98 秒 |
+| 启动时调用 Maven / 下载构建依赖 | 未发生 |
+| 首页身份与页面内容 | 通过 |
+| 保存订阅、生成演示简报 | 通过，3 条合成新闻 |
+| 工具调用与模型协议记录 | 已保存 |
+| 历史保存与 Git 提交记录可读 | 通过 |
+| 真实模型调用 / 外部邮件发送 | 本轮均未发生 |
+
+本次时间从执行启动脚本开始计时，不包含安装 Java、网络下载 ZIP 与人工解压，满足已安装 Java 环境下五分钟内启动的目标。源码从空缓存构建的约七分钟结果仍保留在 [源码下载验收](fresh-clone-acceptance.md)。本轮为 Windows 实测，macOS / Linux 未作新的实机验收。
+
+测试时源码提交为 `c9b8a78e1de42552a1ee844351274228a6b324f4`；JAR SHA-256 为 `93e57859d802f5722e1d789575c31305ad47e0cff9f1407df7c6a9f9957eb035`。发布收尾仅新增启动说明和验收文档，应用源码与启动脚本与该测试版本保持一致。最终包的提交和校验值以包内清单和发布页资产为准。结构化结果见 [启动验收 JSON](evaluation/precompiled-startup-result.json)。
