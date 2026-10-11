@@ -119,3 +119,6 @@ git log --oneline
 设计基线：[架构 v1.1](docs/architecture-v1.1.md)、[工程方案](docs/engineering-plan-v1.1.md)、[四张设计图](docs/diagrams.html)。v1.0 历史文档保留用于追踪，不代表当前功能状态。交付仓库含分批真实 Git 提交；不修改作者日期，也不伪造开发历史。
 
 常见问题：端口冲突设 PORT=8081；首建下载失败检查 Maven Central 网络，交付包有 JAR 可直接运行；真实生成失败检查运行记录、密钥、模型名和来源网络；空简报查看排除词与窗口，不为凑数编造条目。
+
+
+2026-10-11 已扩大来源复核至全部 6 份真实简报、12 条新闻、77 项主要陈述，并提供可导出标签的[人工核验表](docs/evaluation/human-review.html)与[CSV 空模板](docs/evaluation/human-review-template.csv)。辅助来源支持为 72/77，真正人审仍待独立填写，不作为总体准确率，也不回填站内人审指标。完整问题和范围见[扩大核验记录](docs/quality-expanded.md)。
