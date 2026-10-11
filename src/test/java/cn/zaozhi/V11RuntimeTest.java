@@ -16,6 +16,33 @@ class V11RuntimeTest {
     @TempDir Path dir;
     ToolContext context(Map<String,String> options)throws Exception {var config=new HashMap<>(options);config.put("DATA_DIR",dir.toString());var settings=new Settings(config);var db=new Database(settings);var p=Profile.validate(Json.object("nickname","runtime","email","private@example.com","exclude",List.of("BLOCKED")));var user=db.createUser(p);String rid=db.claim(user.path("id").asText(),p,settings.mode(),"manual",null);return new ToolContext(rid,user.path("id").asText(),p,db,settings);}
     com.fasterxml.jackson.databind.node.ObjectNode empty(){return Json.object("title","Brief","intro","No eligible new items","items",List.of());}
+    @Test void unavailablePlaceholderIsNotFetchedAgainWithinTheRun()throws Exception {
+        var ctx=context(Map.of("DEMO_MODE","false"));
+        var first=(com.fasterxml.jackson.databind.node.ObjectNode)NewsClient.demoNews().get(0);first.put("published_at",ctx.windowEnd.toString());
+        ctx.remember(Json.arr().add(first));
+        int[] calls={0};var tools=new ToolRegistry(new NewsClient(){@Override public String article(String url,ToolContext c){calls[0]++;return "Placeholder";}});
+        for(String sid:List.of("demo-agent","demo-agent","demo-agent")){
+            var result=tools.execute("fetch_article",Json.object("source_id",sid),ctx);
+            assertEquals("ARTICLE_UNAVAILABLE",result.path("error_code").asText());assertFalse(result.path("retryable").asBoolean());
+            assertEquals("rss_excerpt",result.path("data").path("evidence_scope").asText());
+        }
+        assertEquals(1,calls[0]);assertTrue(ctx.bodies.isEmpty());
+        assertFalse(tools.execute("fetch_article",Json.object("source_id","unknown"),ctx).path("ok").asBoolean());
+    }
+    @Test void repeatedGooglePlaceholdersStopNetworkWorkWithoutBlockingDirectSources()throws Exception {
+        var ctx=context(Map.of("DEMO_MODE","false"));var rows=Json.arr();
+        for(int i=0;i<4;i++)rows.add(Json.object("source_id","g"+i,"title","AI "+i,"url","https://news.google.com/rss/articles/g"+i,"source","publisher","published_at",ctx.windowEnd.toString(),"excerpt","RSS evidence"));
+        rows.add(Json.object("source_id","direct","title","Direct AI","url","https://huggingface.co/blog/direct","source","HF","published_at",ctx.windowEnd.toString(),"excerpt","RSS evidence"));ctx.remember(rows);
+        int[] googleCalls={0},directCalls={0};var tools=new ToolRegistry(new NewsClient(){@Override public String article(String url,ToolContext c){if(url.startsWith("https://news.google.com/")){googleCalls[0]++;return "Google News";}directCalls[0]++;return "direct body ".repeat(30);}});
+        for(int i=0;i<4;i++)assertEquals("ARTICLE_UNAVAILABLE",tools.execute("fetch_article",Json.object("source_id","g"+i),ctx).path("error_code").asText());
+        assertEquals(2,googleCalls[0]);assertTrue(tools.execute("fetch_article",Json.object("source_id","direct"),ctx).path("ok").asBoolean());assertEquals(1,directCalls[0]);
+        var next=context(Map.of("DEMO_MODE","false"));assertEquals(0,next.googleArticlePlaceholders);assertTrue(next.articleFailures.isEmpty());
+    }
+    @Test void defaultFileReadIsBoundedButExplicitPagingCanReadTheRemainder()throws Exception {
+        var ctx=context(Map.of());var tools=new ToolRegistry(new NewsClient());ctx.workspace.write("notes/long.txt","x".repeat(5000));
+        assertEquals(2000,tools.execute("read_file",Json.object("path","notes/long.txt"),ctx).path("data").asText().length());
+        assertEquals(3000,tools.execute("read_file",Json.object("path","notes/long.txt","offset",2000,"max_chars",8000),ctx).path("data").asText().length());
+    }
     @Test void failedCandidateUpdateKeepsLastAcceptedAndAllFailedSourcesCannotPublishEmpty()throws Exception {var ctx=context(Map.of());var tools=new ToolRegistry(new NewsClient());assertEquals("NO_USABLE_SOURCE",tools.execute("publish_brief",empty(),ctx).path("error_code").asText());ctx.remember(Json.arr());assertTrue(tools.execute("publish_brief",empty(),ctx).path("ok").asBoolean());var old=ctx.candidate;assertFalse(tools.execute("publish_brief",Json.object("title","invalid"),ctx).path("ok").asBoolean());assertSame(old,ctx.candidate);}
     @Test void readonlyContextAndRealShellDoNotExposeEmailOrHostPaths()throws Exception {var ctx=context(Map.of());var tools=new ToolRegistry(new NewsClient());assertFalse(Json.stringify(tools.execute("read_file",Json.object("path","context.json"),ctx)).contains("private@example.com"));for(String path:List.of("preferences.json","sources.json","articles/x.txt","../x","notes/../x","C:/x","//host/share"))assertFalse(tools.execute("write_file",Json.object("path",path,"content","x"),ctx).path("ok").asBoolean(),path);assertEquals("/workspace",tools.execute("bash",Json.object("command","pwd"),ctx).path("data").path("stdout").asText().strip());assertTrue(tools.execute("write_file",Json.object("path","notes/ok.txt","content","abcdef"),ctx).path("ok").asBoolean());assertEquals("cd",tools.execute("read_file",Json.object("path","notes/ok.txt","offset",2,"max_chars",2),ctx).path("data").asText());assertFalse(tools.execute("read_file",Json.object("path","notes/ok.txt","max_chars",8001),ctx).path("ok").asBoolean());}
     @Test void entireOverBudgetBatchIsRejectedBeforeAnySideEffect()throws Exception {var ctx=context(Map.of("MAX_TOOL_CALLS","1"));var request=DemoClient.call("write_file",Json.object("path","notes/a","content","first"));((com.fasterxml.jackson.databind.node.ArrayNode)request.path("tool_calls")).add(DemoClient.call("write_file",Json.object("path","notes/b","content","second")).path("tool_calls").get(0));var failure=assertThrows(AgentFailure.class,()->new AgentRunner((m,t,d)->request,new ToolRegistry(new NewsClient())).run(ctx));assertEquals("BUDGET_EXCEEDED",failure.code);assertFalse(Files.exists(dir.resolve("workspaces").resolve(ctx.runId).resolve("notes/a")));}

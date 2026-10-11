@@ -1,11 +1,11 @@
 # 预编译下载包与启动验收
 
-日期：2026-10-11。公开下载入口：[GitHub Release v1.1.0](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.0)。
+日期：2026-10-11。公开下载入口：[GitHub Release v1.1.1](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.1)。
 
 ## 下载与使用
 
 1. 安装 Java 17 或更新版本，确认终端中 `java -version` 可用。
-2. 在发布页面下载 `ai-news-agent-v1.1.0-precompiled.zip`，解压进入 `ai-news-agent`。
+2. 在发布页面下载 `ai-news-agent-v1.1.1-precompiled.zip`，解压进入 `ai-news-agent`。
 3. Windows 双击 `start.cmd`；macOS / Linux 执行 `chmod +x start.sh mvnw && ./start.sh`。
 4. 打开 <http://127.0.0.1:8080>，保存订阅偏好，点击生成简报。
 
@@ -15,7 +15,7 @@
 
 若本机已经在 8080 运行一个实例，先停止原实例，或在解压目录的本地 `.env` 中修改 `PORT`，例如 `PORT=8081`。双击启动后保留终端窗口；停止服务可以在窗口按 Ctrl+C。
 
-## Windows 实测
+## 首次发布 v1.1.0 的 Windows 实测
 
 将候选发布包解压到新的目录，未复制真实配置和已有数据库，隔离 Maven 缓存，执行包内原有的 `start.cmd`。本机已安装 Java 17.0.19。为避开正在使用的服务，仅将测试端口设为 8097。
 
@@ -32,3 +32,7 @@
 本次时间从执行启动脚本开始计时，不包含安装 Java、网络下载 ZIP 与人工解压，满足已安装 Java 环境下五分钟内启动的目标。源码从空缓存构建的约七分钟结果仍保留在 [源码下载验收](fresh-clone-acceptance.md)。本轮为 Windows 实测，macOS / Linux 未作新的实机验收。
 
 测试时源码提交为 `c9b8a78e1de42552a1ee844351274228a6b324f4`；JAR SHA-256 为 `93e57859d802f5722e1d789575c31305ad47e0cff9f1407df7c6a9f9957eb035`。发布收尾仅新增启动说明和验收文档，应用源码与启动脚本与该测试版本保持一致。最终包的提交和校验值以包内清单和发布页资产为准。结构化结果见 [启动验收 JSON](evaluation/precompiled-startup-result.json)。
+
+## v1.1.1 修复版
+
+最新版增加聚合占位页请求停止与提前收尾提示，未提高模型预算。98 项自动化测试与同偏好真实生成通过，见[修复记录](generation-fix.md)。首次发布的启动记录作为历史保留；新版下载包的最终 SHA-256 与解压启动结果见对应发布资产。

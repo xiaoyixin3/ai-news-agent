@@ -19,6 +19,8 @@ public final class ToolContext {
     public final RunBudget budget;
     public final Map<String,JsonNode> sources=new LinkedHashMap<>();
     public final Map<String,String> bodies=new HashMap<>();
+    public final Map<String,String> articleFailures=new HashMap<>();
+    public int googleArticlePlaceholders;
     public int usableSources,failedSources;
     public ObjectNode candidate;
     public ToolContext(String runId,String uid,JsonNode profile,Database db,Settings settings)throws Exception {

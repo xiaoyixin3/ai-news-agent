@@ -4,7 +4,7 @@ Java 17 + Spring Boot 3.5.16 + SQLite + DeepSeek Function Calling。填写身份
 
 ## 快速启动
 
-推荐直接下载 [v1.1.0 预编译包](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.0)，选择 `ai-news-agent-v1.1.0-precompiled.zip`，解压后双击 `start.cmd`。包内已含 JAR 和运行依赖；本机 Windows 已安装 Java 17 环境下，新目录启动实测约 6 秒。详见[预编译包使用与验收](docs/precompiled-release.md)。
+推荐直接下载 [v1.1.1 预编译包](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.1)，选择 `ai-news-agent-v1.1.1-precompiled.zip`，解压后双击 `start.cmd`。包内已含 JAR 和运行依赖；本机 Windows 已安装 Java 17 环境下，新目录启动实测约 6 秒。详见[预编译包使用与验收](docs/precompiled-release.md)。
 
 前置条件：源码构建使用 JDK 17 或更新版本；含 JAR 的预编译交付包仅需 Java 17 或更新运行环境。不需要另装 Maven、Node 或数据库。解压交付包，在项目目录双击 `start.cmd`；macOS / Linux 执行 `chmod +x mvnw start.sh && ./start.sh`。
 
@@ -114,7 +114,7 @@ java -jar target/ai-news-agent.jar --maintenance=restore --source=C:/backups/ai-
 git log --oneline
 ```
 
-当前本地 95 个自动化用例通过（原 83 项回归及新增 12 项真实进程、调度/审计/渠道契约测试），包括实际 HTTP/TLS 测试服务器上的 DNS 绑定、无效证书握手拒绝、压缩炸弹、重定向、预算、中断批次审计、取消/提交、迁移回滚、归属隔离、可靠投递、保留与恢复。离线评估有 9 组策略标注，另提供 Java 逐项事实复算工具；刻意区分权限/来源校验与人工事实/语义评价，见[评估说明](docs/evaluation.md)。
+当前本地 98 个自动化用例通过（此前 95 项及新增 3 项占位页与分段读取回归），包括实际 HTTP/TLS 测试服务器上的 DNS 绑定、无效证书握手拒绝、压缩炸弹、重定向、预算、中断批次审计、取消/提交、迁移回滚、归属隔离、可靠投递、保留与恢复。离线评估有 9 组策略标注，另提供 Java 逐项事实复算工具；刻意区分权限/来源校验与人工事实/语义评价，见[评估说明](docs/evaluation.md)。
 
 桌面与手机浏览器流程见[验收记录](docs/acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](docs/live-acceptance.md)。该历史联调当时未配置 SMTP；2026-10-11 已完成 QQ 邮箱真实投递且用户确认收件，见[QQ 邮件验收](docs/qq-mail-acceptance.md)。单次成功不代表长期可靠性或摘要事实已全部核验。运行统计的事实支持率和语义重复率为空，不生成虚假分数。
 
@@ -128,3 +128,5 @@ git log --oneline
 2026-10-11 已扩大来源复核至全部 6 份真实简报、12 条新闻、77 项主要陈述，并提供可导出标签的[人工核验表](docs/evaluation/human-review.html)与[CSV 空模板](docs/evaluation/human-review-template.csv)。来源辅助复核阶段记录见[扩大核验记录](docs/quality-expanded.md)。
 
 用户完成并确认发布的人工标注共 77 项：72 项支持、4 项不支持、1 项不确定，**人工标注支持比例为 72/77（93.5%）**，本轮选定陈述标注覆盖率为 100%。详见[人工标注指标](docs/human-quality-acceptance.md)与[逐项标签](docs/evaluation/human-annotation-result.json)。这是离线样本标注统计，与站内按订阅统计的运行指标分别列示。
+
+2026-10-11 修复聚合正文重复抓取与预算收尾不足：同偏好真实生成实测约 35 秒成功，详见[慢生成与预算失败修复](docs/generation-fix.md)。
