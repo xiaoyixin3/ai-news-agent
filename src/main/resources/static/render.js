@@ -18,38 +18,3 @@ export function renderBrief(brief,retry,cancelMail,deleteBrief){
     article.append(source);host.append(article);
   });
 }
-export function renderEvents(host,events,runStatus){
-  host.replaceChildren();
-  if(!events.length){host.append(element('p','正在等待执行…','subtle'));return}
-  events.forEach(event=>{
-    if(event.kind==='tool_start'&&events.some(end=>end.kind==='tool'&&end.step_id===event.step_id))return;
-    const row=element('div',undefined,'event');const payload=event.payload;
-    const name=['tool','tool_start'].includes(event.kind)?(payload.name||event.tool_name||'工具调用'):event.kind==='model'?`第 ${payload.round||'?'} 轮 · ${payload.tool_count||0} 次工具请求`:event.kind==='model_request'?`第 ${payload.round||'?'} 轮 · 模型请求`:event.kind==='shell'?`真实 ${payload.shell_type||'shell'} · ${payload.command||''}`:event.kind==='delivery'?'投递状态':event.kind==='terminal'?'运行结束':event.kind==='error'?'运行错误':event.summary;
-    row.append(element('span',name,'event-name'),element('span',event.kind==='tool'&&Number.isFinite(payload.elapsed_ms)?`${payload.elapsed_ms} ms`:date(event.created_at),'event-time'));
-    if(event.kind==='tool'){
-      const status=payload.status||event.status;
-      row.append(element('div',status==='not_executed'?`未执行：${payload.error_code||event.error_code||''}`:status==='interrupted'?'执行中止，结果未确认':payload.result?.ok?'执行成功':payload.result?`执行失败：${payload.result.message}`:event.summary,'subtle'));
-      const details=element('details');details.append(element('summary','调用详情'),element('pre',JSON.stringify({参数:payload.arguments,结果:payload.result,详情状态:event.payload_state},null,2)));row.append(details);
-      if(!['INLINE','EXTERNAL'].includes(event.payload_state))row.append(element('p',event.payload_state==='MISSING'?'审计详情缺失，摘要仍保留':event.payload_state==='EXPIRED'?'审计详情已到保留期':'详情因配额省略','subtle'));
-    }else if(event.kind==='tool_start'){row.append(element('p',['succeeded','failed','cancelled'].includes(runStatus)?'运行已结束，此工具结果未确认':'工具执行中…','subtle'))}else if(event.kind==='error'){row.append(element('p',payload.message,'run-error'))}else if(event.kind==='model'&&payload.usage?.prompt_tokens!==undefined){row.append(element('p',`本轮用量：输入 ${payload.usage.prompt_tokens}，输出 ${payload.usage.completion_tokens}`,'subtle'))}
-    if(event.kind==='model'&&payload.finish_reason)row.append(element('p',`模型结束信号：${payload.finish_reason}${payload.finish_signal_source==='demo_script'?'（演示脚本）':''}`,'subtle'));
-    if(event.kind==='model'||event.kind==='model_request'){const details=element('details');details.append(element('summary','协议记录'),element('pre',JSON.stringify(payload,null,2)));row.append(details)}
-    if(event.kind==='shell')row.append(element('p',payload.phase==='started'?`实际进程 ${payload.pid} 已启动`:`实际进程 ${payload.pid} · 退出码 ${payload.exit_code??'中止'} · ${payload.duration_ms} ms · ${payload.process_reaped?'已回收':'结果未确认'}`,'subtle'));
-    host.append(row);
-  });
-}
-export function renderRuns(runs,loadEvents,retryRun){
-  const host=document.querySelector('#runs-content');
-  const opened=new Set([...host.querySelectorAll('details.run-row[open]')].map(node=>node.dataset.id));
-  if(!runs.length){host.replaceChildren(element('p','当前模式暂无运行记录。','subtle'));return}
-  host.replaceChildren();
-  runs.forEach(run=>{
-    const row=element('details',undefined,'run-row');row.dataset.id=run.id;row.open=opened.has(run.id);
-    const summary=element('summary');summary.append(element('span',`${date(run.created_at)} · ${run.trigger==='scheduled'?'每日自动简报':'手动生成'}${run.mode==='demo'?' · 演示':''}`,'run-title'),element('span',labels[run.status]||run.status,`run-state ${run.status}`));
-    const events=element('div',undefined,'events');row.append(summary);if(run.error)row.append(element('p',run.error,'run-error'));row.append(events);
-    if(run.phase)row.append(element('p',phases[run.phase]||run.phase,'subtle'));if(run.model_attempts)row.append(element('p',`模型请求 ${run.model_attempts} 次 · 工具请求 ${run.tool_calls} 次 · 已知用量 ${run.known_input_tokens+run.known_output_tokens} · 用量未知的请求 ${run.unknown_usage_attempts} 次`,'subtle'));
-    if(retryRun&&['failed','cancelled'].includes(run.status)){const button=element('button','重新生成','quiet');button.type='button';button.onclick=()=>retryRun(run.id,button);row.append(button)}
-    let loaded=false;row.addEventListener('toggle',async()=>{if(row.open&&!loaded){loaded=true;await loadEvents(run.id,events,run.status)}});
-    host.append(row);if(row.open){loaded=true;loadEvents(run.id,events,run.status)}
-  });
-}

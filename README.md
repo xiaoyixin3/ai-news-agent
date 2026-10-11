@@ -4,11 +4,11 @@ Java 17 + Spring Boot 3.5.16 + SQLite + DeepSeek Function Calling。填写身份
 
 ## 快速启动
 
-推荐直接下载 [v1.1.1 预编译包](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.1)，选择 `ai-news-agent-v1.1.1-precompiled.zip`，解压后双击 `start.cmd`。包内已含 JAR 和运行依赖；本机 Windows 已安装 Java 17 环境下，新目录启动实测约 6 秒。详见[预编译包使用与验收](docs/precompiled-release.md)。
+推荐直接下载 [v1.1.2 预编译包](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.2)，选择 `ai-news-agent-v1.1.2-precompiled.zip`，解压后双击 `start.cmd`。包内已含 JAR 和运行依赖；本机 Windows 已安装 Java 17 环境下，新目录启动实测约 6 秒。详见[预编译包使用与验收](docs/precompiled-release.md)。
 
 前置条件：源码构建使用 JDK 17 或更新版本；含 JAR 的预编译交付包仅需 Java 17 或更新运行环境。不需要另装 Maven、Node 或数据库。解压交付包，在项目目录双击 `start.cmd`；macOS / Linux 执行 `chmod +x mvnw start.sh && ./start.sh`。
 
-打开 <http://127.0.0.1:8080>，填写昵称、身份与关注话题，保存偏好，再点击“生成简报”。展开运行记录可查看工具调用。保持同一浏览器访问，订阅令牌保存在浏览器，数据库只保存令牌哈希；昵称不能用于找回订阅。
+打开 <http://127.0.0.1:8080>，填写昵称、身份与关注话题，保存偏好，再点击“生成简报”。首页仅展示订阅、简报与必要的生成提示。工具轨迹保存在后台，验收排查可使用带订阅令牌的 `GET /api/runs/{id}/events` 接口。保持同一浏览器访问，订阅令牌保存在浏览器，数据库只保存令牌哈希；昵称不能用于找回订阅。
 
 交付 ZIP 包含 `.git` 和已构建的 `target/ai-news-agent.jar`，可直接启动。仅有源码时，启动脚本通过 Maven Wrapper 下载依赖并构建，耗时受网络影响。修改源码后运行 `.\start.cmd -Rebuild` 或 `./start.sh --rebuild`。
 
@@ -83,7 +83,7 @@ context.json、preferences.json、sources.json、feeds.json、历史和正文均
 
 明确临时故障有限重试，每周期最多 3 次，等待 30/60 秒；永久故障保留 failed。远端可能已接受而本地无法确认时为 unknown，不自动重发；页面提示重复风险，需主动确认且经过默认 30 秒冷却才重试。pending/failed 可取消，发送中和 unknown 不可取消。邮件失败不丢站内简报，不承诺外部邮件恰好一次。
 
-运行记录支持取消活动任务及重新生成失败/取消任务；重试创建新 run 并保留 retry_of。创建接口支持 Idempotency-Key，同键同请求返回原 run，同键不同请求返回 409。
+首页支持取消当前生成，并用生成按钮重新生成最近失败/取消的任务；重试创建新 run 并保留 retry_of。创建接口支持 Idempotency-Key，同键同请求返回原 run，同键不同请求返回 409。
 
 ## 升级、保留与备份
 
@@ -116,13 +116,13 @@ git log --oneline
 
 当前本地 98 个自动化用例通过（此前 95 项及新增 3 项占位页与分段读取回归），包括实际 HTTP/TLS 测试服务器上的 DNS 绑定、无效证书握手拒绝、压缩炸弹、重定向、预算、中断批次审计、取消/提交、迁移回滚、归属隔离、可靠投递、保留与恢复。离线评估有 9 组策略标注，另提供 Java 逐项事实复算工具；刻意区分权限/来源校验与人工事实/语义评价，见[评估说明](docs/evaluation.md)。
 
-桌面与手机浏览器流程见[验收记录](docs/acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](docs/live-acceptance.md)。该历史联调当时未配置 SMTP；2026-10-11 已完成 QQ 邮箱真实投递且用户确认收件，见[QQ 邮件验收](docs/qq-mail-acceptance.md)。单次成功不代表长期可靠性或摘要事实已全部核验。运行统计的事实支持率和语义重复率为空，不生成虚假分数。
+桌面与手机浏览器流程见[验收记录](docs/acceptance-v1.1.md)。真实 DeepSeek 与新闻网络已完成一次站内端到端联调：10 轮、20 次工具调用、3 条新闻保存成功，另有 5 个真实模式浏览器检查；见[真实联调报告](docs/live-acceptance.md)。该历史联调当时未配置 SMTP；2026-10-11 已完成 QQ 邮箱真实投递且用户确认收件，见[QQ 邮件验收](docs/qq-mail-acceptance.md)。单次成功不代表长期可靠性或摘要事实已全部核验。后台统计接口的事实支持率和语义重复率为空，不生成虚假分数；首页不展示技术统计。
 
 2026-10-11 又完成 AI 产品经理和 AI 研究员两种身份的真实生成，保留研究员一次预算失败及 retry_of 重试记录。三个身份的 7 条新闻抽选 14 项陈述，辅助对照支持 12 项、不支持 2 项，不能冒充独立人工准确率；明确记录来源混入和时间表述偏差。详见[补齐记录](docs/quality-followup.md)与[脱敏标注](docs/evaluation/real-sample-report.json)。这部分是早期辅助复核记录；后续人工标注指标已另行发布。跨日持续观察与长期存储压力仍待执行。
 
 设计基线：[架构 v1.1](docs/architecture-v1.1.md)、[工程方案](docs/engineering-plan-v1.1.md)、[四张设计图](docs/diagrams.html)。v1.0 历史文档保留用于追踪，不代表当前功能状态。交付仓库含分批真实 Git 提交；不修改作者日期，也不伪造开发历史。
 
-常见问题：端口冲突设 PORT=8081；首建下载失败检查 Maven Central 网络，交付包有 JAR 可直接运行；真实生成失败检查运行记录、密钥、模型名和来源网络；空简报查看排除词与窗口，不为凑数编造条目。
+常见问题：端口冲突设 PORT=8081；首建下载失败检查 Maven Central 网络，交付包有 JAR 可直接运行；真实生成失败先查看页面提示，维护者可检查后台审计、密钥配置、模型名和来源网络；空简报查看排除词与窗口，不为凑数编造条目。
 
 
 2026-10-11 已扩大来源复核至全部 6 份真实简报、12 条新闻、77 项主要陈述，并提供可导出标签的[人工核验表](docs/evaluation/human-review.html)与[CSV 空模板](docs/evaluation/human-review-template.csv)。来源辅助复核阶段记录见[扩大核验记录](docs/quality-expanded.md)。

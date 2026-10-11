@@ -1,11 +1,11 @@
 # 预编译下载包与启动验收
 
-日期：2026-10-11。公开下载入口：[GitHub Release v1.1.1](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.1)。
+日期：2026-10-11。公开下载入口：[GitHub Release v1.1.2](https://github.com/xiaoyixin3/ai-news-agent/releases/tag/v1.1.2)。
 
 ## 下载与使用
 
 1. 安装 Java 17 或更新版本，确认终端中 `java -version` 可用。
-2. 在发布页面下载 `ai-news-agent-v1.1.1-precompiled.zip`，解压进入 `ai-news-agent`。
+2. 在发布页面下载 `ai-news-agent-v1.1.2-precompiled.zip`，解压进入 `ai-news-agent`。
 3. Windows 双击 `start.cmd`；macOS / Linux 执行 `chmod +x start.sh mvnw && ./start.sh`。
 4. 打开 <http://127.0.0.1:8080>，保存订阅偏好，点击生成简报。
 
@@ -36,3 +36,7 @@
 ## v1.1.1 修复版
 
 最新版增加聚合占位页请求停止与提前收尾提示，未提高模型预算。98 项自动化测试与同偏好真实生成通过，见[修复记录](generation-fix.md)。首次发布的启动记录作为历史保留；新版下载包的最终 SHA-256 与解压启动结果见对应发布资产。
+
+## v1.1.2 用户界面
+
+首页只展示身份与订阅偏好、简报历史及必要的生成状态，移除运行记录和技术统计区。后台工具审计和统计接口继续保存；失败重试通过主生成按钮发起，保留 retry_of 关联。
